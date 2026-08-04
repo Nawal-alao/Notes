@@ -59,6 +59,13 @@
 
 <style>
   li.highlighted { background: linear-gradient(90deg, rgba(244,114,182,0.06), rgba(255,140,100,0.04)); transform: translateX(4px); border-radius: 10px; transition: background 180ms, transform 180ms; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,99,71,0.0); }
+    50% { box-shadow: 0 6px 20px rgba(255,99,71,0.08); transform: translateX(6px); }
+    100% { box-shadow: 0 0 0 0 rgba(255,99,71,0.0); }
+  }
+
+  li.highlighted { animation: pulse 600ms ease; }
 </style>
 </aside>
 

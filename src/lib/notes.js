@@ -18,20 +18,72 @@ export async function fetchNoteById(id) {
 }
 
 export async function upsertNote(note) {
-  // note: expected shape { id?, user_id, title (base64), encrypted_content (base64), content_iv (base64), tags, history }
-  let { data, error } = await supabase.from('notes').upsert(note).select().single();
-  if (error) {
-    // If the error is about an unknown column (history), retry without history
-    if (error.message && error.message.toLowerCase().includes('column') && note.history) {
-      const copy = { ...note };
-      delete copy.history;
-      const r = await supabase.from('notes').upsert(copy).select().single();
-      if (r.error) throw r.error;
-      return r.data;
+  // note: expected shape { id?, user_id, title (base64), title_iv, encrypted_content (base64), content_iv (base64), tags, history }
+  try {
+    if (note.id) {
+      // fetch existing server row to merge history safely server-side
+      const existingRes = await supabase.from('notes').select('*').eq('id', note.id).single();
+      if (existingRes.error && existingRes.status !== 406) {
+        // 406 may mean not found
+        // proceed to upsert directly
+      }
+
+      const existing = existingRes.data || null;
+
+      // normalize incoming history entries: ensure timestamps
+      const incomingHistory = Array.isArray(note.history) ? note.history.map(h => ({
+        encrypted_content: h.encrypted_content,
+        content_iv: h.content_iv,
+        title: h.title,
+        title_iv: h.title_iv,
+        updated_at: h.updated_at || new Date().toISOString()
+      })) : [];
+
+      const prevEntry = existing && existing.encrypted_content ? [{
+        encrypted_content: existing.encrypted_content,
+        content_iv: existing.content_iv,
+        title: existing.title,
+        title_iv: existing.title_iv,
+        updated_at: existing.updated_at || new Date().toISOString()
+      }] : [];
+
+      const merged = [...incomingHistory, ...prevEntry, ...(existing && Array.isArray(existing.history) ? existing.history : [])].slice(0, 20);
+
+      const payload = { ...note, history: merged };
+
+      const { data, error } = await supabase.from('notes').upsert(payload).select().single();
+      if (error) {
+        // If history column doesn't exist, retry without history
+        if (error.message && error.message.toLowerCase().includes('column')) {
+          const copy = { ...note };
+          delete copy.history;
+          const r = await supabase.from('notes').upsert(copy).select().single();
+          if (r.error) throw r.error;
+          return r.data;
+        }
+        throw error;
+      }
+      return data;
     }
-    throw error;
+
+    // no id: create new note
+    const payload = { ...note };
+    if (!payload.history) payload.history = Array.isArray(note.history) ? note.history.slice(0,20) : [];
+    const { data, error } = await supabase.from('notes').upsert(payload).select().single();
+    if (error) {
+      if (error.message && error.message.toLowerCase().includes('column') && payload.history) {
+        const copy = { ...payload };
+        delete copy.history;
+        const r = await supabase.from('notes').upsert(copy).select().single();
+        if (r.error) throw r.error;
+        return r.data;
+      }
+      throw error;
+    }
+    return data;
+  } catch (err) {
+    throw err;
   }
-  return data;
 }
 
 export async function deleteNote(id) {

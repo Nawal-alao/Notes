@@ -1,8 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { fade } from 'svelte/transition';
-  export let note;
-  export let index = 0;
+  let ghostEl;
   const dispatch = createEventDispatcher();
 
   function open() { dispatch('open', note.id); }
@@ -10,9 +9,19 @@
   function exportNote(type) { dispatch('export', { id: note.id, type }); }
 </script>
 
-<article class="p-3 rounded-lg hover:bg-slate-800/50 cursor-pointer" on:click={open} transition:fade draggable="true"
-  on:dragstart={(e)=>{ e.dataTransfer.setData('text/plain', note.id); e.currentTarget.classList.add('dragging'); }}
-  on:dragend={(e)=>{ e.currentTarget.classList.remove('dragging'); }}
+  <article class="p-3 rounded-lg hover:bg-slate-800/50 cursor-pointer" on:click={open} transition:fade draggable="true"
+  on:dragstart={(e)=>{
+    e.dataTransfer.setData('text/plain', note.id);
+    e.currentTarget.classList.add('dragging');
+    // create ghost preview
+    ghostEl = document.createElement('div');
+    ghostEl.className = 'drag-ghost';
+    ghostEl.textContent = note.title || 'Sans titre';
+    document.body.appendChild(ghostEl);
+    // offset to centre the ghost under pointer
+    e.dataTransfer.setDragImage(ghostEl, 40, 20);
+  }}
+  on:dragend={(e)=>{ e.currentTarget.classList.remove('dragging'); if (ghostEl && ghostEl.parentNode) ghostEl.parentNode.removeChild(ghostEl); ghostEl = null; }}
   transition:fly={{ y: 8, duration: 240, delay: index * 40 }}>
   <div class="flex items-center justify-between">
     <h4 class="text-sm font-semibold text-slate-100">{note.titlePreview || note.title || 'Sans titre'}</h4>

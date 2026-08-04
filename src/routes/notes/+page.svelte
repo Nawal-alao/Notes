@@ -9,6 +9,8 @@
   import { get } from 'svelte/store';
   import { goto } from '$app/navigation';
   import { crossfade } from 'svelte/transition';
+  import { flip } from 'svelte/animate';
+  import { spring } from 'svelte/motion';
 
   const [send, receive] = crossfade({
     duration: d => Math.max(200, d * 0.6),
@@ -16,6 +18,8 @@
       return { duration: 200, css: t => `opacity:${t}` };
     }
   });
+
+  const btnScale = spring(1, { stiffness: 0.18, damping: 0.6 });
 
   let notes = [];
   let folders = [];
@@ -83,11 +87,10 @@
     selectedNoteId = newNote.id;
   }
 
-  let bouncing = false;
   function bounceCreate() {
-    bouncing = true;
+    btnScale.set(1.18);
     createNote();
-    setTimeout(() => bouncing = false, 500);
+    setTimeout(() => btnScale.set(1), 320);
   }
 
   function onNoteOpen(id) { selectedNoteId = id; }
@@ -160,16 +163,17 @@
     <div class="flex-1">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
-            <button class="rounded-full bg-fuchsia-500 px-4 py-2 transform transition-transform" on:click={bounceCreate}>Nouvelle note</button>
+            <button class="rounded-full bg-fuchsia-500 px-4 py-2 transform transition-transform" on:click={bounceCreate}
+              style="transform: scale({$btnScale});">Nouvelle note</button>
             <input placeholder="Rechercher" bind:value={search} class="px-3 py-2 rounded bg-slate-900/40" />
           </div>
       </div>
 
       <div class="grid grid-cols-3 gap-4">
-        <div class="col-span-1 space-y-2">
-              {#each filteredNotes() as note, i}
+        <div class="col-span-1 space-y-2" animate:flip>
+          {#each filteredNotes() as note, i (note.id)}
             <NoteCard {note} index={i} on:open={(e)=>onNoteOpen(e.detail)} on:delete={(e)=>onDelete(e.detail)} on:export={(e)=>onExport(e)} />
-              {/each}
+          {/each}
         </div>
 
         <div class="col-span-2">

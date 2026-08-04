@@ -3,6 +3,7 @@
   import { writable, get } from 'svelte/store';
   import { encryptionStore, arrayBufferToBase64, base64ToArrayBuffer } from '$lib/stores/encryption';
   import { makeEncryptedPayload, decryptPayload, upsertNote, fetchNoteById } from '$lib/notes';
+  import HistoryPanel from './HistoryPanel.svelte';
   import { goto } from '$app/navigation';
 
   function debounce(fn, wait) {
@@ -21,6 +22,8 @@
   let status = 'Chargement...';
   let saving = false;
   let currentNote = null;
+  let showHistory = false;
+  let previewContent = '';
 
   async function loadNote(id) {
     const key = get(encryptionStore);
@@ -44,31 +47,34 @@
     }
   }
 
-  // autosave
-  const save = debounce(async () => {
+  // actual save implementation
+  async function doSave() {
     const key = get(encryptionStore);
     if (!key) return goto('/unlock');
     saving = true; status = 'Enregistrement…';
 
     try {
-      // preserve previous encrypted blob in history if present
       const prev = currentNote || {};
       const titleEnc = await makeEncryptedPayload(key, title);
       const contentEnc = await makeEncryptedPayload(key, body);
 
-      // build history: insert previous encrypted payload
-      let history = prev.history || [];
+      let history = Array.isArray(prev.history) ? prev.history.slice() : [];
       try {
-        // prepend previous
         if (prev.encrypted_content) {
-          history = [{ encrypted_content: prev.encrypted_content, content_iv: prev.content_iv, updated_at: prev.updated_at }, ...history].slice(0,20);
+          const prevEntry = {
+            encrypted_content: prev.encrypted_content,
+            content_iv: prev.content_iv,
+            title: prev.title,
+            title_iv: prev.title_iv,
+            updated_at: prev.updated_at || new Date().toISOString()
+          };
+          history = [prevEntry, ...history].slice(0,20);
         }
-      } catch (e) {}
+      } catch (e) { /* ignore */ }
 
       const payload = {
         id: currentNote?.id,
         title: titleEnc.ciphertextBase64,
-        // optional: store a title_iv if needed
         title_iv: titleEnc.ivBase64,
         encrypted_content: contentEnc.ciphertextBase64,
         content_iv: contentEnc.ivBase64,
@@ -85,7 +91,10 @@
     } finally {
       saving = false;
     }
-  }, 700);
+  }
+
+  // autosave (debounced)
+  const save = debounce(() => { doSave(); }, 700);
 
   $: if (noteId) loadNote(noteId);
 
@@ -107,6 +116,36 @@
     const a = document.createElement('a');
     a.href = url; a.download = (title || 'note') + '.txt'; a.click();
     URL.revokeObjectURL(url);
+  }
+
+  function openHistory() {
+    showHistory = true;
+  }
+
+  async function handleRestore(e) {
+    const key = get(encryptionStore);
+    if (!key) return goto('/unlock');
+    const item = e.detail;
+    try {
+      const decrypted = await decryptPayload(key, item.encrypted_content, item.content_iv);
+      body = decrypted;
+      // trigger immediate save to create a new version
+      await doSave();
+      showHistory = false;
+    } catch (err) {
+      status = 'Erreur de déchiffrement historique';
+    }
+  }
+
+  async function handlePreview(e) {
+    const key = get(encryptionStore);
+    if (!key) return goto('/unlock');
+    try {
+      const item = e.detail;
+      previewContent = await decryptPayload(key, item.encrypted_content, item.content_iv);
+    } catch (err) {
+      previewContent = 'Impossible de prévisualiser (déchiffrement échoué)';
+    }
   }
 
 </script>
@@ -135,7 +174,21 @@
 
   <div class="mt-3 flex justify-end gap-2">
     <button class="btn" on:click={exportTxt}>Exporter .txt</button>
+    <button class="btn" on:click={openHistory}>Historique</button>
   </div>
+
+  {#if showHistory}
+    <div transition:slide class="fixed right-0 top-0 h-full z-50">
+      <HistoryPanel history={currentNote?.history || []} on:restore={handleRestore} on:preview={handlePreview} />
+    </div>
+  {/if}
+
+  {#if previewContent}
+    <div class="fixed left-1/2 top-12 transform -translate-x-1/2 bg-slate-900 p-4 rounded shadow-lg max-w-2xl z-50">
+      <div class="prose text-slate-100"><pre>{previewContent}</pre></div>
+      <div class="mt-2 text-right"><button on:click={() => previewContent = ''}>Fermer</button></div>
+    </div>
+  {/if}
 
 <script>
   function simpleMarkdown(md) {

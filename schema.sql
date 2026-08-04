@@ -10,13 +10,17 @@ create table if not exists public.profiles (
 );
 
 -- notes: stores encrypted note payloads; content is opaque to Supabase
+-- NOTE: encrypted blobs are stored as base64 text (not bytea) to avoid
+-- silent corruption when different clients encode binary differently.
 create table if not exists public.notes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null,
   title text not null default '',
+  title_iv text,
   tags text[] not null default '{}',
-  encrypted_content bytea not null,
-  content_iv bytea not null,
+  encrypted_content text not null,
+  content_iv text not null,
+  history jsonb not null default '[]'::jsonb,
   updated_at timestamptz default now()
 );
 
