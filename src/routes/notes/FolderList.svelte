@@ -5,6 +5,7 @@
 
   export let folders = [];
   export let selected = 'all';
+  let dragOverId = null;
 
   function select(id) {
     dispatch('select', id);
@@ -32,8 +33,11 @@
   </div>
 
   <ul class="space-y-2">
-    {#each folders as f (f.id)}
-      <li transition:fly={{ y: 6, duration: 220 }} class="flex items-center justify-between">
+    {#each folders as f, i (f.id)}
+      <li transition:fly={{ y: 6, duration: 220, delay: i * 40 }} class="flex items-center justify-between {dragOverId===f.id ? 'highlighted': ''}"
+        on:dragover|preventDefault={(e)=>{ e.dataTransfer.dropEffect='move'; dragOverId = f.id }}
+        on:dragleave={() => dragOverId = null}
+        on:drop={(e)=>{ e.preventDefault(); dragOverId = null; const noteId = e.dataTransfer.getData('text/plain'); dispatch('drop', { noteId, folderId: f.id }); }}>
         <button class="text-left w-full flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-slate-800/60 {selected===f.id? 'bg-slate-800/40':''}"
           on:click={() => select(f.id)}>
           <div class="flex-1">
@@ -52,6 +56,10 @@
       </li>
     {/each}
   </ul>
+
+<style>
+  li.highlighted { background: linear-gradient(90deg, rgba(244,114,182,0.06), rgba(255,140,100,0.04)); transform: translateX(4px); border-radius: 10px; transition: background 180ms, transform 180ms; }
+</style>
 </aside>
 
 <style>

@@ -40,6 +40,21 @@ export async function deleteNote(id) {
   return true;
 }
 
+export function subscribeToNotes(callback) {
+  // callback receives the realtime payload from Supabase
+  const channel = supabase
+    .channel('notes_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, (payload) => {
+      try { callback(payload); } catch (e) { console.error('subscribeToNotes callback error', e); }
+    });
+
+  channel.subscribe();
+
+  return async () => {
+    try { await channel.unsubscribe(); } catch (e) { console.warn('unsubscribe failed', e); }
+  };
+}
+
 export function makeEncryptedPayload(key, plaintext) {
   // returns { ciphertextBase64, ivBase64 }
   const iv = crypto.getRandomValues(new Uint8Array(12));

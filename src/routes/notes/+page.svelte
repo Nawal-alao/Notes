@@ -4,10 +4,18 @@
   import NoteCard from './NoteCard.svelte';
   import Editor from './Editor.svelte';
   import HistoryPanel from './HistoryPanel.svelte';
-  import { fetchNotes, makeEncryptedPayload, decryptPayload, upsertNote, deleteNote } from '$lib/notes';
+  import { fetchNotes, makeEncryptedPayload, decryptPayload, upsertNote, deleteNote, subscribeToNotes } from '$lib/notes';
   import { encryptionStore, base64ToArrayBuffer } from '$lib/stores/encryption';
   import { get } from 'svelte/store';
   import { goto } from '$app/navigation';
+  import { crossfade } from 'svelte/transition';
+
+  const [send, receive] = crossfade({
+    duration: d => Math.max(200, d * 0.6),
+    fallback(node, params) {
+      return { duration: 200, css: t => `opacity:${t}` };
+    }
+  });
 
   let notes = [];
   let folders = [];
@@ -39,6 +47,28 @@
     const key = get(encryptionStore);
     if (!key) return goto('/unlock');
     await load();
+    // subscribe to realtime changes
+    const unsubscribe = subscribeToNotes((payload) => {
+      const ev = payload.eventType || payload.event || payload.type;
+      const newRow = payload.new || payload.record || payload;
+      const oldRow = payload.old || payload.previous;
+      if (!newRow && !oldRow) return;
+
+      if (ev === 'INSERT' || ev === 'INSERT' || payload.type === 'INSERT') {
+        // prepend
+        notes = [newRow, ...notes.filter(n => n.id !== newRow.id)];
+      } else if (ev === 'UPDATE' || payload.type === 'UPDATE') {
+        notes = notes.map(n => n.id === newRow.id ? newRow : n);
+      } else if (ev === 'DELETE' || payload.type === 'DELETE') {
+        notes = notes.filter(n => n.id !== oldRow.id);
+      }
+      buildFolders();
+    });
+
+    // cleanup on destroy
+    const cleanup = () => { if (unsubscribe) unsubscribe(); }
+    // ensure we unsubscribe when leaving
+    window.addEventListener('beforeunload', cleanup);
   });
 
   function selectFolder(id) { selectedFolder = id; }
@@ -53,11 +83,34 @@
     selectedNoteId = newNote.id;
   }
 
+  let bouncing = false;
+  function bounceCreate() {
+    bouncing = true;
+    createNote();
+    setTimeout(() => bouncing = false, 500);
+  }
+
   function onNoteOpen(id) { selectedNoteId = id; }
 
   function onNoteSaved(saved) { load(); }
 
   async function onDelete(id) { await deleteNote(id); await load(); if (selectedNoteId===id) selectedNoteId = null; }
+
+  async function onDropEvent(e) {
+    const { noteId, folderId } = e.detail;
+    const n = notes.find(x => x.id === noteId);
+    if (!n) return;
+    const tags = folderId === 'uncat' ? [] : (folderId === 'all' ? n.tags || [] : [folderId]);
+    try {
+      await upsertNote({ id: n.id, tags });
+      // optimistic update
+      n.tags = tags;
+      buildFolders();
+    } catch (err) {
+      console.error('failed to move note', err);
+      await load();
+    }
+  }
 
   async function onExport(e) {
     const { id, type } = e.detail;
@@ -102,29 +155,33 @@
 
 <div class="min-h-screen p-6 bg-slate-950 text-slate-100">
   <div class="flex gap-6">
-    <FolderList {folders} selected={selectedFolder} on:select={(e)=>selectFolder(e.detail)} />
+    <FolderList {folders} selected={selectedFolder} on:select={(e)=>selectFolder(e.detail)} on:drop={(e)=>onDropEvent(e.detail)} />
 
     <div class="flex-1">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
-          <button class="rounded-full bg-fuchsia-500 px-4 py-2" on:click={createNote}>Nouvelle note</button>
-          <input placeholder="Rechercher" bind:value={search} class="px-3 py-2 rounded bg-slate-900/40" />
-        </div>
+            <button class="rounded-full bg-fuchsia-500 px-4 py-2 transform transition-transform" on:click={bounceCreate}>Nouvelle note</button>
+            <input placeholder="Rechercher" bind:value={search} class="px-3 py-2 rounded bg-slate-900/40" />
+          </div>
       </div>
 
       <div class="grid grid-cols-3 gap-4">
         <div class="col-span-1 space-y-2">
-          {#each filteredNotes() as note}
-            <NoteCard {note} on:open={(e)=>onNoteOpen(e.detail)} on:delete={(e)=>onDelete(e.detail)} on:export={(e)=>onExport(e)} />
-          {/each}
+              {#each filteredNotes() as note, i}
+            <NoteCard {note} index={i} on:open={(e)=>onNoteOpen(e.detail)} on:delete={(e)=>onDelete(e.detail)} on:export={(e)=>onExport(e)} />
+              {/each}
         </div>
 
         <div class="col-span-2">
-          {#if selectedNoteId}
-            <Editor noteId={selectedNoteId} onSaved={(e)=>onNoteSaved(e.detail)} />
-          {:else}
-            <div class="p-8 bg-slate-900 rounded">Sélectionnez une note</div>
-          {/if}
+              {#if selectedNoteId}
+                {#key selectedNoteId}
+                  <div in:receive|local out:send|local class="transition-all">
+                    <Editor noteId={selectedNoteId} onSaved={(e)=>onNoteSaved(e.detail)} />
+                  </div>
+                {/key}
+              {:else}
+                <div class="p-8 bg-slate-900 rounded">Sélectionnez une note</div>
+              {/if}
         </div>
       </div>
     </div>
