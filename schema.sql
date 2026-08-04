@@ -2,9 +2,9 @@
 -- profiles: stores the master-key verification material per user
 create table if not exists public.profiles (
   user_id uuid primary key,
-  salt bytea not null,
-  encrypted_verifier bytea not null,
-  verifier_iv bytea not null,
+  salt text not null,
+  encrypted_verifier text not null,
+  verifier_iv text not null,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

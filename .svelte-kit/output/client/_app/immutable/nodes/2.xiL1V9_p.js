@@ -1,0 +1,1 @@
+import{s as n,o as s}from"../chunks/B2QSKqcC.js";import{S as e,i as r}from"../chunks/Y4urnUXa.js";import{g as a}from"../chunks/7ks7euWK.js";function i(o){return s(()=>{a("/login")}),[]}class u extends e{constructor(t){super(),r(this,t,i,null,n,{})}}export{u as component};

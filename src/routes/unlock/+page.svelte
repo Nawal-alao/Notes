@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
-  import { deriveKey, encryptionStore } from '$lib/stores/encryption';
+  import { arrayBufferToBase64, base64ToArrayBuffer, deriveKey, encryptionStore } from '$lib/stores/encryption';
 
   let passphrase = '';
   let status = '';
@@ -47,9 +47,9 @@
 
         const { error } = await supabase.from('profiles').upsert({
           user_id: user.id,
-          salt: Array.from(salt),
-          encrypted_verifier: Array.from(new Uint8Array(verifierBuffer)),
-          verifier_iv: Array.from(verifierIv)
+          salt: arrayBufferToBase64(salt),
+          encrypted_verifier: arrayBufferToBase64(verifierBuffer),
+          verifier_iv: arrayBufferToBase64(verifierIv)
         });
 
         if (error) {
@@ -63,10 +63,10 @@
         return;
       }
 
-      const salt = Uint8Array.from(profileData.salt);
+      const salt = base64ToArrayBuffer(profileData.salt);
       const key = await deriveKey(passphrase, salt);
-      const verifierBytes = Uint8Array.from(profileData.encrypted_verifier);
-      const verifierIv = Uint8Array.from(profileData.verifier_iv);
+      const verifierBytes = base64ToArrayBuffer(profileData.encrypted_verifier);
+      const verifierIv = base64ToArrayBuffer(profileData.verifier_iv);
       await crypto.subtle.decrypt({ name: 'AES-GCM', iv: verifierIv }, key, verifierBytes);
       encryptionStore.set(key);
       goto('/notes');

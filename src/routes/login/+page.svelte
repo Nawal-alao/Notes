@@ -10,7 +10,18 @@
     isLoading = true;
     status = 'Envoi du magic link…';
 
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    const redirectTo = typeof window !== 'undefined'
+      ? new URL('/unlock', window.location.origin).toString()
+      : '/unlock';
+
+    console.log('redirectTo utilisé :', redirectTo);
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: redirectTo,
+      },
+    });
 
     if (error) {
       status = error.message;
