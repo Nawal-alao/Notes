@@ -3,33 +3,48 @@
   import { supabase } from '$lib/supabase';
 
   let email = '';
+  let password = '';
   let status = '';
   let isLoading = false;
 
-  async function handleSubmit() {
+  async function handleSignIn() {
     isLoading = true;
-    status = 'Envoi du magic link…';
+    status = 'Connexion…';
 
-    const redirectTo = typeof window !== 'undefined'
-      ? new URL('/unlock', window.location.origin).toString()
-      : '/unlock';
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-    console.log('redirectTo utilisé :', redirectTo);
+    if (error) {
+      status = error.message === 'Invalid login credentials'
+        ? "Aucun compte avec ces identifiants. Utilise « Créer un compte » si c'est ta première visite."
+        : error.message;
+      isLoading = false;
+      return;
+    }
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: redirectTo,
-      },
-    });
+    goto('/unlock');
+  }
+
+  async function handleSignUp() {
+    isLoading = true;
+    status = 'Création du compte…';
+
+    const { data, error } = await supabase.auth.signUp({ email, password });
 
     if (error) {
       status = error.message;
-    } else {
-      status = 'Vérifiez votre boîte mail pour ouvrir le lien de connexion.';
+      isLoading = false;
+      return;
     }
 
-    isLoading = false;
+    if (!data.session) {
+      // Ne devrait pas arriver puisque "Confirm email" est désactivé,
+      // mais on garde un message clair au cas où.
+      status = 'Compte créé. Vérifie ta boîte mail si une confirmation est requise.';
+      isLoading = false;
+      return;
+    }
+
+    goto('/unlock');
   }
 </script>
 
@@ -42,22 +57,34 @@
     <div class="mb-8 space-y-2">
       <p class="text-sm uppercase tracking-[0.35em] text-cyan-400">Private Notes</p>
       <h1 class="text-3xl font-semibold">Accédez à votre espace sécurisé</h1>
-      <p class="text-sm text-slate-400">Un magic link vous connecte, puis vous déverrouillez vos notes avec votre phrase de passe maître.</p>
+      <p class="text-sm text-slate-400">Connectez-vous avec votre e-mail et mot de passe de compte, puis déverrouillez vos notes avec votre phrase de passe maître.</p>
     </div>
 
-    <form class="space-y-4" on:submit|preventDefault={handleSubmit}>
+    <form class="space-y-4" on:submit|preventDefault={handleSignIn}>
       <label class="block text-sm text-slate-300">
         Adresse e-mail
         <input bind:value={email} type="email" required class="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 outline-none ring-0 transition focus:border-cyan-400" placeholder="vous@example.com" />
       </label>
 
-      <button type="submit" disabled={isLoading} class="w-full rounded-2xl bg-cyan-500 px-4 py-3 font-medium text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60">
-        {isLoading ? 'Envoi…' : 'Recevoir un magic link'}
-      </button>
+      <label class="block text-sm text-slate-300">
+        Mot de passe du compte
+        <input bind:value={password} type="password" required minlength="6" class="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 outline-none ring-0 transition focus:border-cyan-400" placeholder="Au moins 6 caractères" />
+      </label>
+
+      <div class="flex gap-3">
+        <button type="submit" disabled={isLoading} class="flex-1 rounded-2xl bg-cyan-500 px-4 py-3 font-medium text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60">
+          {isLoading ? 'Patientez…' : 'Se connecter'}
+        </button>
+        <button type="button" on:click={handleSignUp} disabled={isLoading} class="flex-1 rounded-2xl border border-cyan-400/40 px-4 py-3 font-medium text-cyan-300 transition hover:bg-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-60">
+          Créer un compte
+        </button>
+      </div>
     </form>
 
     {#if status}
       <p class="mt-6 text-sm text-slate-300">{status}</p>
     {/if}
+
+    <p class="mt-6 text-xs text-slate-500">Ce mot de passe protège l'accès à ton compte. Il est différent de la phrase de passe maître qui chiffre tes notes, demandée à l'étape suivante.</p>
   </div>
 </div>
