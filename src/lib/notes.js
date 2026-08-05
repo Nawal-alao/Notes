@@ -20,9 +20,18 @@ export async function fetchNoteById(id) {
 export async function upsertNote(note) {
   // note: expected shape { id?, user_id, title (base64), title_iv, encrypted_content (base64), content_iv (base64), tags, history }
   try {
-    if (note.id) {
+    const payload = { ...note };
+    if (!payload.user_id) {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const userId = sessionData?.session?.user?.id;
+      if (!userId) throw new Error('Utilisateur non authentifié');
+      payload.user_id = userId;
+    }
+
+    if (payload.id) {
       // fetch existing server row to merge history safely server-side
-      const existingRes = await supabase.from('notes').select('*').eq('id', note.id).single();
+      const existingRes = await supabase.from('notes').select('*').eq('id', payload.id).single();
       if (existingRes.error && existingRes.status !== 406) {
         // 406 may mean not found
         // proceed to upsert directly
@@ -49,9 +58,9 @@ export async function upsertNote(note) {
 
       const merged = [...incomingHistory, ...prevEntry, ...(existing && Array.isArray(existing.history) ? existing.history : [])].slice(0, 20);
 
-      const payload = { ...note, history: merged };
+      const notePayload = { ...payload, history: merged };
 
-      const { data, error } = await supabase.from('notes').upsert(payload).select().single();
+      const { data, error } = await supabase.from('notes').upsert(notePayload).select().single();
       if (error) {
         // If history column doesn't exist, retry without history
         if (error.message && error.message.toLowerCase().includes('column')) {
@@ -67,9 +76,9 @@ export async function upsertNote(note) {
     }
 
     // no id: create new note
-    const payload = { ...note };
-    if (!payload.history) payload.history = Array.isArray(note.history) ? note.history.slice(0,20) : [];
-    const { data, error } = await supabase.from('notes').upsert(payload).select().single();
+    const createPayload = { ...payload };
+    if (!createPayload.history) createPayload.history = Array.isArray(note.history) ? note.history.slice(0,20) : [];
+    const { data, error } = await supabase.from('notes').upsert(createPayload).select().single();
     if (error) {
       if (error.message && error.message.toLowerCase().includes('column') && payload.history) {
         const copy = { ...payload };

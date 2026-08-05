@@ -9,6 +9,13 @@
       "_server.js"
     ]
   },
+  "_Icon.js": {
+    "file": "chunks/Icon.js",
+    "name": "Icon",
+    "imports": [
+      "_ssr.js"
+    ]
+  },
   "_encryption.js": {
     "file": "chunks/encryption.js",
     "name": "encryption",
@@ -19,6 +26,14 @@
   "_exports.js": {
     "file": "chunks/exports.js",
     "name": "exports"
+  },
+  "_eye.js": {
+    "file": "chunks/eye.js",
+    "name": "eye",
+    "imports": [
+      "_ssr.js",
+      "_Icon.js"
+    ]
   },
   "_index.js": {
     "file": "chunks/index.js",
@@ -40,6 +55,14 @@
     "file": "chunks/server.js",
     "name": "server"
   },
+  "_sparkles.js": {
+    "file": "chunks/sparkles.js",
+    "name": "sparkles",
+    "imports": [
+      "_ssr.js",
+      "_Icon.js"
+    ]
+  },
   "_ssr.js": {
     "file": "chunks/ssr.js",
     "name": "ssr"
@@ -58,7 +81,19 @@
   },
   "_supabase.js": {
     "file": "chunks/supabase.js",
-    "name": "supabase"
+    "name": "supabase",
+    "imports": [
+      "_ssr.js",
+      "_Icon.js"
+    ]
+  },
+  "_triangle-alert.js": {
+    "file": "chunks/triangle-alert.js",
+    "name": "triangle-alert",
+    "imports": [
+      "_ssr.js",
+      "_Icon.js"
+    ]
   },
   "_utils.js": {
     "file": "chunks/utils.js",
@@ -113,10 +148,13 @@
     "src": "src/routes/+layout.svelte",
     "isEntry": true,
     "imports": [
-      "_ssr.js"
+      "_ssr.js",
+      "_index.js",
+      "_triangle-alert.js",
+      "_Icon.js"
     ],
     "css": [
-      "_app/immutable/assets/_layout.CaoleE9X.css"
+      "_app/immutable/assets/_layout.CgTzRU2y.css"
     ]
   },
   "src/routes/+page.svelte": {
@@ -141,7 +179,10 @@
       "_exports.js",
       "_utils2.js",
       "_state.svelte.js",
-      "_supabase.js"
+      "_supabase.js",
+      "_sparkles.js",
+      "_Icon.js",
+      "_eye.js"
     ]
   },
   "src/routes/notes/+page.svelte": {
@@ -151,11 +192,15 @@
     "isEntry": true,
     "imports": [
       "_ssr.js",
+      "_triangle-alert.js",
+      "_Icon.js",
+      "_encryption.js",
+      "_supabase.js",
       "_exports.js",
       "_utils2.js",
       "_state.svelte.js",
-      "_supabase.js",
-      "_encryption.js"
+      "_index.js",
+      "_sparkles.js"
     ]
   },
   "src/routes/unlock/+page.svelte": {
@@ -169,7 +214,9 @@
       "_utils2.js",
       "_state.svelte.js",
       "_supabase.js",
-      "_encryption.js"
+      "_encryption.js",
+      "_Icon.js",
+      "_eye.js"
     ]
   },
   "virtual:__sveltekit/env": {

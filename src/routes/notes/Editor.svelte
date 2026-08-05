@@ -1,10 +1,16 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { writable, get } from 'svelte/store';
-  import { encryptionStore, arrayBufferToBase64, base64ToArrayBuffer } from '$lib/stores/encryption';
+  import { slide, fade } from 'svelte/transition';
+  import { encryptionStore } from '$lib/stores/encryption';
   import { makeEncryptedPayload, decryptPayload, upsertNote, fetchNoteById } from '$lib/notes';
   import HistoryPanel from './HistoryPanel.svelte';
   import { goto } from '$app/navigation';
+  import {
+    Bold, Italic, Heading1, Heading2, List, Code, Link, 
+    Maximize2, Minimize2, History, Download, Eye, Edit3, Columns, 
+    Check, Loader2, Sparkles, X, FileText
+  } from 'lucide-svelte';
 
   function debounce(fn, wait) {
     let t;
@@ -19,22 +25,23 @@
 
   let title = '';
   let body = '';
-  let status = 'Chargement...';
+  let status = 'Enregistré';
   let saving = false;
   let currentNote = null;
   let showHistory = false;
   let previewContent = '';
+  let viewMode = 'split'; // 'write' | 'preview' | 'split'
+  let isZenMode = false;
 
   async function loadNote(id) {
+    if (!id) return;
     const key = get(encryptionStore);
     if (!key) return goto('/unlock');
     const row = await fetchNoteById(id);
     currentNote = row;
     try {
-      // title may be plaintext or base64 encrypted
       let t = row.title || '';
       try {
-        // try decrypt if base64-like
         title = await decryptPayload(key, row.title, row.title_iv || row.content_iv);
       } catch (e) {
         title = t;
@@ -47,11 +54,11 @@
     }
   }
 
-  // actual save implementation
   async function doSave() {
     const key = get(encryptionStore);
     if (!key) return goto('/unlock');
-    saving = true; status = 'Enregistrement…';
+    saving = true; 
+    status = 'Enregistrement…';
 
     try {
       const prev = currentNote || {};
@@ -68,7 +75,7 @@
             title_iv: prev.title_iv,
             updated_at: prev.updated_at || new Date().toISOString()
           };
-          history = [prevEntry, ...history].slice(0,20);
+          history = [prevEntry, ...history].slice(0, 20);
         }
       } catch (e) { /* ignore */ }
 
@@ -87,34 +94,42 @@
       status = 'Enregistré';
       onSaved(saved);
     } catch (e) {
-      status = 'Échec — réessai';
+      status = 'Échec de sauvegarde';
     } finally {
       saving = false;
     }
   }
 
-  // autosave (debounced)
-  const save = debounce(() => { doSave(); }, 700);
+  const save = debounce(() => { doSave(); }, 600);
 
   $: if (noteId) loadNote(noteId);
 
+  $: wordCount = body.trim() ? body.trim().split(/\s+/).length : 0;
+  $: charCount = body.length;
+
   function applyFormat(signature) {
-    // simple markdown insertion
-    const ta = document.getElementById('editor');
+    const ta = document.getElementById('main-editor');
     if (!ta) return;
     const start = ta.selectionStart, end = ta.selectionEnd;
     const before = body.slice(0, start);
     const sel = body.slice(start, end);
     const after = body.slice(end);
     body = before + signature.start + sel + signature.end + after;
-    // move caret
+    
+    tick().then(() => {
+      ta.focus();
+      ta.setSelectionRange(start + signature.start.length, end + signature.start.length);
+    });
+    save();
   }
 
   function exportTxt() {
-    const blob = new Blob([title + '\n\n' + body], { type: 'text/plain' });
+    const blob = new Blob([title + '\n\n' + body], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = (title || 'note') + '.txt'; a.click();
+    a.href = url; 
+    a.download = (title || 'note-privee') + '.txt'; 
+    a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -129,11 +144,10 @@
     try {
       const decrypted = await decryptPayload(key, item.encrypted_content, item.content_iv);
       body = decrypted;
-      // trigger immediate save to create a new version
       await doSave();
       showHistory = false;
     } catch (err) {
-      status = 'Erreur de déchiffrement historique';
+      status = 'Erreur lors de la restauration';
     }
   }
 
@@ -144,69 +158,212 @@
       const item = e.detail;
       previewContent = await decryptPayload(key, item.encrypted_content, item.content_iv);
     } catch (err) {
-      previewContent = 'Impossible de prévisualiser (déchiffrement échoué)';
+      previewContent = 'Déchiffrement de la prévisualisation échoué';
     }
   }
 
-</script>
-
-<div class="flex flex-col h-full">
-  <div class="mb-3">
-    <input class="w-full text-2xl bg-transparent border-0 outline-none text-slate-100" bind:value={title} placeholder="Titre" on:input={() => save()} />
-    <div class="flex items-center gap-3 mt-2">
-      <div class="toolbar flex gap-2">
-        <button on:click={() => applyFormat({ start: '**', end: '**' })}><strong>B</strong></button>
-        <button on:click={() => applyFormat({ start: '*', end: '*' })}><em>I</em></button>
-        <button on:click={() => applyFormat({ start: '# ', end: '' })}>H1</button>
-        <button on:click={() => applyFormat({ start: '- ', end: '' })}>•</button>
-      </div>
-      <div class="ml-auto text-sm text-slate-400">{status}</div>
-    </div>
-  </div>
-
-  <div class="flex-1 grid grid-cols-2 gap-4">
-    <textarea id="editor" bind:value={body} class="p-4 bg-slate-950 rounded-lg text-slate-200 resize-none" on:input={() => save()}></textarea>
-
-    <div class="p-4 bg-slate-900 rounded-lg text-slate-200 overflow-auto">
-      <div>{@html simpleMarkdown(body)}</div>
-    </div>
-  </div>
-
-  <div class="mt-3 flex justify-end gap-2">
-    <button class="btn" on:click={exportTxt}>Exporter .txt</button>
-    <button class="btn" on:click={openHistory}>Historique</button>
-  </div>
-
-  {#if showHistory}
-    <div transition:slide class="fixed right-0 top-0 h-full z-50">
-      <HistoryPanel history={currentNote?.history || []} on:restore={handleRestore} on:preview={handlePreview} />
-    </div>
-  {/if}
-
-  {#if previewContent}
-    <div class="fixed left-1/2 top-12 transform -translate-x-1/2 bg-slate-900 p-4 rounded shadow-lg max-w-2xl z-50">
-      <div class="prose text-slate-100"><pre>{previewContent}</pre></div>
-      <div class="mt-2 text-right"><button on:click={() => previewContent = ''}>Fermer</button></div>
-    </div>
-  {/if}
-
-<script>
   function simpleMarkdown(md) {
-    if (!md) return '';
+    if (!md) return '<span class="text-slate-600 italic">Aucun contenu à prévisualiser…</span>';
     let html = md
-      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-      .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/gim, '<em>$1</em>')
-      .replace(/^- (.*$)/gim, '<li>$1</li>')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-bold text-cyan-300 mt-4 mb-2">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold text-cyan-400 mt-5 mb-2">$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-extrabold text-white mt-6 mb-3 pb-2 border-b border-white/10">$1</h1>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong class="font-bold text-white">$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em class="italic text-slate-200">$1</em>')
+      .replace(/`(.*?)`/gim, '<code class="bg-slate-900 text-cyan-300 px-1.5 py-0.5 rounded font-mono text-xs border border-white/10">$1</code>')
+      .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc text-slate-300">$1</li>')
       .replace(/\n/g, '<br/>');
-    // wrap list items
-    html = html.replace(/(<li>.*<\/li>)/gim, '<ul>$1</ul>');
     return html;
   }
 </script>
 
-<style>
-  textarea { min-height: 400px; }
-</style>
+<div class="flex flex-col h-full glass-panel rounded-3xl p-6 border border-white/10 shadow-2xl relative overflow-hidden transition-all duration-300 {isZenMode ? 'fixed inset-0 z-50 rounded-none border-0 p-8 bg-[#090d16]' : ''}">
+  
+  <!-- Header Title & Mode Bar -->
+  <div class="space-y-4 mb-4 pb-4 border-b border-white/10">
+    <div class="flex items-center justify-between gap-4">
+      <input
+        class="w-full text-2xl md:text-3xl font-extrabold bg-transparent border-0 outline-none text-white placeholder-slate-600 tracking-tight"
+        bind:value={title}
+        placeholder="Titre de la note…"
+        on:input={() => save()}
+      />
+
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <!-- View Mode Switcher -->
+        <div class="flex items-center p-1 rounded-2xl bg-white/[0.04] border border-white/10">
+          <button
+            on:click={() => viewMode = 'write'}
+            class="p-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 {viewMode === 'write' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white'}"
+            title="Mode Édition"
+          >
+            <Edit3 class="w-3.5 h-3.5" />
+            <span class="hidden md:inline">Éditer</span>
+          </button>
+          <button
+            on:click={() => viewMode = 'split'}
+            class="p-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 {viewMode === 'split' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white'}"
+            title="Vue Scindée"
+          >
+            <Columns class="w-3.5 h-3.5" />
+            <span class="hidden md:inline">Scindé</span>
+          </button>
+          <button
+            on:click={() => viewMode = 'preview'}
+            class="p-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 {viewMode === 'preview' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white'}"
+            title="Aperçu"
+          >
+            <Eye class="w-3.5 h-3.5" />
+            <span class="hidden md:inline">Aperçu</span>
+          </button>
+        </div>
+
+        <!-- Zen Mode Toggle -->
+        <button
+          on:click={() => isZenMode = !isZenMode}
+          class="p-2 rounded-2xl bg-white/[0.04] border border-white/10 text-slate-400 hover:text-white hover:bg-white/[0.08] transition"
+          title={isZenMode ? "Quitter le mode Zen" : "Mode Zen plein écran"}
+        >
+          {#if isZenMode}
+            <Minimize2 class="w-4 h-4" />
+          {:else}
+            <Maximize2 class="w-4 h-4" />
+          {/if}
+        </button>
+      </div>
+    </div>
+
+    <!-- Formatting Toolbar & Status -->
+    <div class="flex items-center justify-between gap-3 text-xs flex-wrap">
+      <div class="flex items-center gap-1.5 flex-wrap bg-white/[0.03] p-1.5 rounded-2xl border border-white/5">
+        <button on:click={() => applyFormat({ start: '**', end: '**' })} class="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Gras (**texte**)">
+          <Bold class="w-3.5 h-3.5" />
+        </button>
+        <button on:click={() => applyFormat({ start: '*', end: '*' })} class="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Italique (*texte*)">
+          <Italic class="w-3.5 h-3.5" />
+        </button>
+        <div class="w-px h-4 bg-white/10 mx-1"></div>
+        <button on:click={() => applyFormat({ start: '# ', end: '' })} class="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Titre 1">
+          <Heading1 class="w-3.5 h-3.5" />
+        </button>
+        <button on:click={() => applyFormat({ start: '## ', end: '' })} class="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Titre 2">
+          <Heading2 class="w-3.5 h-3.5" />
+        </button>
+        <div class="w-px h-4 bg-white/10 mx-1"></div>
+        <button on:click={() => applyFormat({ start: '- ', end: '' })} class="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Liste à puces">
+          <List class="w-3.5 h-3.5" />
+        </button>
+        <button on:click={() => applyFormat({ start: '`', end: '`' })} class="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Code en ligne">
+          <Code class="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <!-- Action Buttons (Export, History, Save Indicator) -->
+      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/5 text-slate-400">
+          {#if saving}
+            <Loader2 class="w-3 h-3 text-cyan-400 animate-spin" />
+            <span class="text-[11px] text-cyan-300">Sauvegarde…</span>
+          {:else}
+            <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+            <span class="text-[11px] text-slate-300">{status}</span>
+          {/if}
+        </div>
+
+        <button
+          on:click={exportTxt}
+          class="p-2 rounded-2xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.08] transition flex items-center gap-1.5"
+          title="Exporter en fichier .txt"
+        >
+          <Download class="w-3.5 h-3.5" />
+          <span class="hidden sm:inline">Export</span>
+        </button>
+
+        <button
+          on:click={openHistory}
+          class="p-2 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/20 transition flex items-center gap-1.5 font-medium"
+          title="Historique des versions"
+        >
+          <History class="w-3.5 h-3.5" />
+          <span class="hidden sm:inline">Historique</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workspace Body Area -->
+  <div class="flex-1 min-h-0 grid gap-4 relative {viewMode === 'split' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}">
+    <!-- Editor Textarea -->
+    {#if viewMode === 'write' || viewMode === 'split'}
+      <textarea
+        id="main-editor"
+        bind:value={body}
+        class="w-full h-full p-4 rounded-2xl glass-input text-slate-100 placeholder-slate-600 font-mono text-sm leading-relaxed resize-none outline-none border border-white/10 transition focus:border-cyan-400/60 overflow-y-auto"
+        placeholder="Commencez à rédiger votre note chiffrée ici (support Markdown)…"
+        on:input={() => save()}
+      ></textarea>
+    {/if}
+
+    <!-- Live Markdown Preview -->
+    {#if viewMode === 'preview' || viewMode === 'split'}
+      <div class="w-full h-full p-6 rounded-2xl glass-card border border-white/10 overflow-y-auto leading-relaxed prose prose-invert max-w-none text-slate-200">
+        <div>{@html simpleMarkdown(body)}</div>
+      </div>
+    {/if}
+  </div>
+
+  <!-- Bottom Status Bar (Counters) -->
+  <div class="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500">
+    <div class="flex items-center gap-4">
+      <span><strong>{wordCount}</strong> mots</span>
+      <span><strong>{charCount}</strong> caractères</span>
+    </div>
+    <div class="flex items-center gap-1 text-slate-400">
+      <FileText class="w-3 h-3 text-cyan-400" />
+      <span>AES-GCM Chiffrement Actif</span>
+    </div>
+  </div>
+
+  <!-- Version History Drawer -->
+  {#if showHistory}
+    <div transition:slide={{ duration: 250, axis: 'x' }} class="fixed right-0 top-0 bottom-0 z-50">
+      <HistoryPanel
+        history={currentNote?.history || []}
+        on:restore={handleRestore}
+        on:preview={handlePreview}
+        on:close={() => showHistory = false}
+      />
+    </div>
+  {/if}
+
+  <!-- History Preview Modal -->
+  {#if previewContent}
+    <div transition:fade={{ duration: 150 }} class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-6">
+      <div class="w-full max-w-2xl glass-panel p-6 rounded-3xl border border-white/10 shadow-2xl flex flex-col max-h-[80vh]">
+        <div class="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
+          <h4 class="text-sm font-bold text-white flex items-center gap-2">
+            <Eye class="w-4 h-4 text-fuchsia-400" />
+            <span>Aperçu de la version archivée</span>
+          </h4>
+          <button on:click={() => previewContent = ''} class="text-slate-400 hover:text-white p-1 rounded-lg">
+            <X class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 rounded-2xl bg-slate-950/60 font-mono text-xs leading-relaxed text-slate-200 whitespace-pre-wrap border border-white/5">
+          {previewContent}
+        </div>
+
+        <div class="mt-4 pt-3 flex justify-end">
+          <button on:click={() => previewContent = ''} class="px-4 py-2 rounded-xl bg-white/[0.06] text-xs font-semibold text-slate-300 hover:text-white transition">
+            Fermer l'aperçu
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+</div>
+

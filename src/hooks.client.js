@@ -6,7 +6,8 @@ let initialized = false;
 
 function getCurrentKey() {
   return new Promise((resolve) => {
-    const unsubscribe = encryptionStore.subscribe((value) => {
+    let unsubscribe = () => {};
+    unsubscribe = encryptionStore.subscribe((value) => {
       resolve(Boolean(value));
       unsubscribe();
     });
