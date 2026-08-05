@@ -29,6 +29,7 @@
   let saving = false;
   let currentNote = null;
   let showHistory = false;
+  let debugRow = null;
   let previewContent = '';
   let viewMode = 'write'; // 'write' | 'preview' | 'split'
   let canSplit = false;
@@ -40,17 +41,54 @@
     if (!key) return goto('/unlock');
     const row = await fetchNoteById(id);
     currentNote = row;
+    debugRow = row;
+    const debugInfo = {
+      id: row.id,
+      title: row.title,
+      title_iv: row.title_iv,
+      content_iv: row.content_iv,
+      encrypted_content: row.encrypted_content,
+      titleType: typeof row.title,
+      titleIVType: typeof row.title_iv,
+      contentIVType: typeof row.content_iv,
+      encryptedContentType: typeof row.encrypted_content,
+      titleLength: row.title?.length,
+      titleIVLength: row.title_iv?.length,
+      contentIVLength: row.content_iv?.length,
+      encryptedContentLength: row.encrypted_content?.length,
+      titleJSON: JSON.stringify(row.title),
+      titleIVJSON: JSON.stringify(row.title_iv),
+      contentIVJSON: JSON.stringify(row.content_iv),
+      encryptedContentJSON: JSON.stringify(row.encrypted_content)
+    };
+    console.log('Editor loadNote row', debugInfo);
+    window.__noteDebug = debugInfo;
     try {
       let t = row.title || '';
+      const titleIV = row.title_iv || row.content_iv;
       try {
-        title = await decryptPayload(key, row.title, row.title_iv || row.content_iv);
+        title = await decryptPayload(key, row.title, titleIV);
       } catch (e) {
         title = t;
       }
 
-      body = await decryptPayload(key, row.encrypted_content, row.content_iv);
-      status = 'Enregistré';
+      const contentIV = row.content_iv || row.title_iv;
+      try {
+        body = await decryptPayload(key, row.encrypted_content, contentIV);
+        status = 'Enregistré';
+      } catch (e) {
+        console.error('Note body decrypt failed', {
+          id: row.id,
+          content_iv: row.content_iv,
+          title_iv: row.title_iv,
+          encrypted_content: row.encrypted_content ? row.encrypted_content.slice(0, 40) : null,
+          contentIV
+        }, e);
+        body = '';
+        status = row.encrypted_content ? 'Contenu illisible — ancienne note' : 'Enregistré';
+      }
     } catch (e) {
+      console.error('Note load failed', { id: row?.id, title: row?.title, title_iv: row?.title_iv, content_iv: row?.content_iv }, e);
       status = 'Erreur de déchiffrement';
     }
   }

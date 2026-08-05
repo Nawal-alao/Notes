@@ -26,7 +26,9 @@ export function arrayBufferToBase64(buffer) {
 }
 
 export function base64ToArrayBuffer(base64) {
-  const binary = atob(base64);
+  const cleaned = base64.replace(/\s+/g, '');
+  const padded = cleaned + '='.repeat((4 - (cleaned.length % 4)) % 4);
+  const binary = atob(padded);
   const bytes = new Uint8Array(binary.length);
 
   for (let i = 0; i < binary.length; i += 1) {
@@ -34,6 +36,60 @@ export function base64ToArrayBuffer(base64) {
   }
 
   return bytes;
+}
+
+function stringToUint8Array(str) {
+  const bytes = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i += 1) {
+    bytes[i] = str.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function hexToUint8Array(hex) {
+  const normalized = hex.replace(/^0x/, '').replace(/\\/g, '').replace(/x/g, '');
+  const bytes = new Uint8Array(normalized.length / 2);
+  for (let i = 0; i < normalized.length; i += 2) {
+    bytes[i / 2] = parseInt(normalized.slice(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+function isBase64String(str) {
+  const cleaned = str.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
+  return /^[A-Za-z0-9+/]+={0,2}$/.test(cleaned);
+}
+
+export function parseLegacyEncryptedString(value) {
+  if (!value) return null;
+  if (typeof value !== 'string') {
+    throw new TypeError('Encrypted value must be a string');
+  }
+
+  const trimmed = value.trim();
+
+  // Try standard/base64-compatible string first.
+  if (isBase64String(trimmed)) {
+    try {
+      return base64ToArrayBuffer(trimmed);
+    } catch (error) {
+      // fallback to other decoding methods below
+    }
+  }
+
+  // old legacy hex-escaped strings like "\x6f5555..."
+  if (/^(?:\\x[0-9A-Fa-f]{2})+$/.test(trimmed)) {
+    return hexToUint8Array(trimmed.replace(/\\x/g, ''));
+  }
+
+  // pure hex strings saved as text.
+  const potentialHex = trimmed.replace(/^0x/, '');
+  if (/^[0-9A-Fa-f]+$/.test(potentialHex) && potentialHex.length % 2 === 0) {
+    return hexToUint8Array(potentialHex);
+  }
+
+  // Fallback: assume raw byte string stored in text.
+  return stringToUint8Array(trimmed);
 }
 
 export async function deriveKey(passphrase, salt) {

@@ -14,34 +14,36 @@ WHERE table_schema = 'public' AND table_name = 'profiles'
 
 -- === MIGRATION START ===
 
--- 2) Convert encrypted_content from bytea -> text (base64) if it's currently bytea
+-- 2) Convert encrypted_content from bytea -> text if it's currently bytea
+-- The bytes already contain UTF-8 base64 text, so use convert_from rather than encode.
 DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='notes' AND column_name='encrypted_content' AND data_type='bytea'
   ) THEN
-    RAISE NOTICE 'Converting encrypted_content from bytea to text (base64)';
+    RAISE NOTICE 'Converting encrypted_content from bytea to text';
     ALTER TABLE public.notes
       ALTER COLUMN encrypted_content TYPE text
-      USING encode(encrypted_content, 'base64');
+      USING convert_from(encrypted_content, 'UTF8');
   ELSE
     RAISE NOTICE 'encrypted_content is not bytea; skipping conversion';
   END IF;
 END
 $$;
 
--- 3) Convert content_iv from bytea -> text (base64) if it's currently bytea
+-- 3) Convert content_iv from bytea -> text if it's currently bytea
+-- The bytes already contain UTF-8 base64 text, so use convert_from rather than encode.
 DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='notes' AND column_name='content_iv' AND data_type='bytea'
   ) THEN
-    RAISE NOTICE 'Converting content_iv from bytea to text (base64)';
+    RAISE NOTICE 'Converting content_iv from bytea to text';
     ALTER TABLE public.notes
       ALTER COLUMN content_iv TYPE text
-      USING encode(content_iv, 'base64');
+      USING convert_from(content_iv, 'UTF8');
   ELSE
     RAISE NOTICE 'content_iv is not bytea; skipping conversion';
   END IF;

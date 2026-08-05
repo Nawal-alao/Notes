@@ -1,5 +1,5 @@
 import { supabase } from '$lib/supabase';
-import { arrayBufferToBase64, base64ToArrayBuffer } from '$lib/stores/encryption';
+import { arrayBufferToBase64, parseLegacyEncryptedString } from '$lib/stores/encryption';
 
 export async function fetchNotes() {
   const { data, error } = await supabase
@@ -127,7 +127,7 @@ export function makeEncryptedPayload(key, plaintext) {
 }
 
 export function decryptPayload(key, ciphertextBase64, ivBase64) {
-  const ct = base64ToArrayBuffer(ciphertextBase64);
-  const iv = base64ToArrayBuffer(ivBase64);
+  const ct = parseLegacyEncryptedString(ciphertextBase64);
+  const iv = parseLegacyEncryptedString(ivBase64);
   return crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct).then((pt) => new TextDecoder().decode(pt));
 }

@@ -53,9 +53,10 @@
         }
       }
 
-      if (n.encrypted_content && n.content_iv) {
+      const contentIV = n.content_iv || n.title_iv;
+      if (n.encrypted_content && contentIV) {
         try {
-          const decryptedContent = await decryptPayload(key, n.encrypted_content, n.content_iv);
+          const decryptedContent = await decryptPayload(key, n.encrypted_content, contentIV);
           preview = decryptedContent ? decryptedContent.slice(0, 300) : '';
         } catch (err) {
           preview = n.preview || '';
@@ -251,7 +252,7 @@
     if (!key) return goto('/unlock');
     try {
       const title = await decryptPayload(key, n.title, n.title_iv || n.content_iv);
-      const body = await decryptPayload(key, n.encrypted_content, n.content_iv);
+      const body = await decryptPayload(key, n.encrypted_content, n.content_iv || n.title_iv);
       if (type === 'txt') {
         const blob = new Blob([title + '\n\n' + body], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
