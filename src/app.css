@@ -57,6 +57,36 @@ body {
   box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.5), 0 0 20px 0 rgba(56, 189, 248, 0.08);
 }
 
+/* Sidebar / Layout */
+:root {
+  --sidebar-width: 16rem; /* 256px */
+  --sidebar-collapsed: 5rem; /* 80px */
+  --glass-bg: rgba(15,22,38,0.82);
+}
+
+.app-sidebar {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  transition: width 220ms ease, min-width 220ms ease;
+}
+.app-sidebar.collapsed {
+  width: var(--sidebar-collapsed);
+  min-width: var(--sidebar-collapsed);
+}
+
+/* Reduce visual density: subtler borders and fewer separators */
+.reduced-separators * { border-color: transparent !important; }
+.subtle-divider { border-color: rgba(255,255,255,0.04); }
+
+/* Main content behavior: fluid two-column main area */
+.main-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+@media (min-width: 1280px) {
+  .main-grid { grid-template-columns: 1fr 1.4fr; }
+}
+
+/* Minimal focus accent */
+.focus-accent:focus { box-shadow: 0 0 0 4px rgba(56,189,248,0.08); }
+
 .glass-input {
   background: rgba(9, 13, 22, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.1);

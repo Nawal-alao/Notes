@@ -30,7 +30,8 @@
   let currentNote = null;
   let showHistory = false;
   let previewContent = '';
-  let viewMode = 'split'; // 'write' | 'preview' | 'split'
+  let viewMode = 'write'; // 'write' | 'preview' | 'split'
+  let canSplit = false;
   let isZenMode = false;
 
   async function loadNote(id) {
@@ -103,6 +104,13 @@
   const save = debounce(() => { doSave(); }, 600);
 
   $: if (noteId) loadNote(noteId);
+
+  onMount(() => {
+    const check = () => { canSplit = window.innerWidth >= 1400; if (!canSplit && viewMode === 'split') viewMode = 'write'; };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  });
 
   $: wordCount = body.trim() ? body.trim().split(/\s+/).length : 0;
   $: charCount = body.length;
@@ -203,14 +211,16 @@
             <Edit3 class="w-3.5 h-3.5" />
             <span class="hidden md:inline">Éditer</span>
           </button>
-          <button
-            on:click={() => viewMode = 'split'}
-            class="p-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 {viewMode === 'split' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white'}"
-            title="Vue Scindée"
-          >
-            <Columns class="w-3.5 h-3.5" />
-            <span class="hidden md:inline">Scindé</span>
-          </button>
+          {#if canSplit}
+            <button
+              on:click={() => viewMode = 'split'}
+              class="p-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 {viewMode === 'split' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white'}"
+              title="Vue Scindée (écrans larges)"
+            >
+              <Columns class="w-3.5 h-3.5" />
+              <span class="hidden md:inline">Scindé</span>
+            </button>
+          {/if}
           <button
             on:click={() => viewMode = 'preview'}
             class="p-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 {viewMode === 'preview' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white'}"
@@ -295,9 +305,9 @@
   </div>
 
   <!-- Workspace Body Area -->
-  <div class="flex-1 min-h-0 grid gap-4 relative {viewMode === 'split' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}">
+  <div class="flex-1 min-h-0 grid gap-4 relative {viewMode === 'split' && canSplit ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}">
     <!-- Editor Textarea -->
-    {#if viewMode === 'write' || viewMode === 'split'}
+    {#if viewMode === 'write' || (viewMode === 'split' && canSplit)}
       <textarea
         id="main-editor"
         bind:value={body}
@@ -308,7 +318,7 @@
     {/if}
 
     <!-- Live Markdown Preview -->
-    {#if viewMode === 'preview' || viewMode === 'split'}
+    {#if viewMode === 'preview' || (viewMode === 'split' && canSplit)}
       <div class="w-full h-full p-6 rounded-2xl glass-card border border-white/10 overflow-y-auto leading-relaxed prose prose-invert max-w-none text-slate-200">
         <div>{@html simpleMarkdown(body)}</div>
       </div>

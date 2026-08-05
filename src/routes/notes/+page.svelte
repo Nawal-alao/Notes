@@ -250,10 +250,10 @@
     </div>
   </header>
 
-  <!-- Workspace Main Layout Grid -->
+  <!-- Workspace Main Layout Grid (Sidebar + Main) -->
   <div class="flex-1 min-h-0 flex gap-4 overflow-hidden">
-    
-    <!-- Sidebar: Folders & Tags -->
+
+    <!-- Sidebar: Folders & Tags (collapsible) -->
     <FolderList
       {folders}
       selected={selectedFolder}
@@ -262,76 +262,83 @@
       on:drop={(e) => onDropEvent(e.detail)}
     />
 
-    <!-- Column 2: Note Card List -->
-    <div class="w-80 md:w-96 flex-shrink-0 flex flex-col glass-panel rounded-3xl p-4 border border-white/10 shadow-2xl overflow-hidden">
-      <div class="flex items-center justify-between px-2 mb-3">
-        <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-          <FileText class="w-3.5 h-3.5 text-cyan-400" />
-          <span>Notes ({filteredNotesList.length})</span>
-        </span>
-      </div>
-
-      <div class="flex-1 overflow-y-auto pr-1 space-y-2.5">
-        {#if filteredNotesList.length > 0}
-          {#each filteredNotesList as note, i (note.id)}
-            <div animate:flip={{ duration: 200 }}>
-              <NoteCard
-                {note}
-                index={i}
-                isSelected={selectedNoteId === note.id}
-                on:open={(e) => onNoteOpen(e.detail)}
-                on:delete={(e) => onDelete(e.detail)}
-                on:export={(e) => onExport(e)}
-              />
-            </div>
-          {/each}
-        {:else}
-          <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-3">
-            <FolderOpen class="w-10 h-10 stroke-1 text-slate-600" />
-            <div class="space-y-1">
-              <p class="text-sm font-semibold text-slate-400">Aucune note trouvée</p>
-              <p class="text-xs text-slate-500">Créez votre première note chiffrée pour commencer.</p>
-            </div>
-            <button
-              on:click={bounceCreate}
-              class="px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-semibold hover:bg-cyan-500/20 transition flex items-center gap-1.5"
-            >
-              <Plus class="w-3.5 h-3.5" />
-              <span>Créer une note</span>
-            </button>
-          </div>
-        {/if}
-      </div>
-    </div>
-
-    <!-- Column 3: Active Note Editor -->
+    <!-- Main area: Notes list + Editor (responsive two-column inside main) -->
     <main class="flex-1 min-w-0 h-full overflow-hidden">
-      {#if selectedNoteId}
-        {#key selectedNoteId}
-          <div in:receive|local out:send|local class="h-full">
-            <Editor noteId={selectedNoteId} onSaved={() => onNoteSaved()} />
+      <div class="main-grid h-full">
+
+        <!-- Notes List Panel -->
+        <section class="glass-panel rounded-3xl p-4 border border-white/10 shadow-2xl overflow-hidden overflow-y-auto">
+          <div class="flex items-center justify-between px-2 mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <FileText class="w-3.5 h-3.5 text-cyan-400" />
+              <span>Notes ({filteredNotesList.length})</span>
+            </span>
           </div>
-        {/key}
-      {:else}
-        <div class="h-full glass-panel rounded-3xl p-8 border border-white/10 shadow-2xl flex flex-col items-center justify-center text-center space-y-4">
-          <div class="w-16 h-16 rounded-3xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shadow-xl">
-            <Sparkles class="w-8 h-8" />
+
+          <div class="flex-1 overflow-y-auto pr-1 space-y-2.5 h-[calc(100%-48px)]">
+            {#if filteredNotesList.length > 0}
+              {#each filteredNotesList as note, i (note.id)}
+                <div animate:flip={{ duration: 200 }}>
+                  <NoteCard
+                    {note}
+                    index={i}
+                    isSelected={selectedNoteId === note.id}
+                    on:open={(e) => onNoteOpen(e.detail)}
+                    on:delete={(e) => onDelete(e.detail)}
+                    on:export={(e) => onExport(e)}
+                  />
+                </div>
+              {/each}
+            {:else}
+              <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-3">
+                <FolderOpen class="w-10 h-10 stroke-1 text-slate-600" />
+                <div class="space-y-1">
+                  <p class="text-sm font-semibold text-slate-400">Aucune note trouvée</p>
+                  <p class="text-xs text-slate-500">Créez votre première note chiffrée pour commencer.</p>
+                </div>
+                <button
+                  on:click={bounceCreate}
+                  class="px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-semibold hover:bg-cyan-500/20 transition flex items-center gap-1.5"
+                >
+                  <Plus class="w-3.5 h-3.5" />
+                  <span>Créer une note</span>
+                </button>
+              </div>
+            {/if}
           </div>
-          <div class="max-w-sm space-y-2">
-            <h3 class="text-xl font-bold text-white">Aucune note sélectionnée</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">
-              Sélectionnez une note dans le panneau de gauche pour l'éditer, ou créez un nouveau document chiffré en un clic.
-            </p>
-          </div>
-          <button
-            on:click={bounceCreate}
-            class="px-6 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 hover:opacity-95 transition flex items-center gap-2"
-          >
-            <Plus class="w-4 h-4" />
-            <span>Nouvelle note chiffrée</span>
-          </button>
-        </div>
-      {/if}
+        </section>
+
+        <!-- Editor Panel -->
+        <section class="h-full">
+          {#if selectedNoteId}
+            {#key selectedNoteId}
+              <div in:receive|local out:send|local class="h-full">
+                <Editor noteId={selectedNoteId} onSaved={() => onNoteSaved()} />
+              </div>
+            {/key}
+          {:else}
+            <div class="h-full glass-panel rounded-3xl p-8 border border-white/10 shadow-2xl flex flex-col items-center justify-center text-center space-y-4">
+              <div class="w-16 h-16 rounded-3xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shadow-xl">
+                <Sparkles class="w-8 h-8" />
+              </div>
+              <div class="max-w-sm space-y-2">
+                <h3 class="text-xl font-bold text-white">Aucune note sélectionnée</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Sélectionnez une note dans la liste pour l'éditer, ou créez un nouveau document chiffré en un clic.
+                </p>
+              </div>
+              <button
+                on:click={bounceCreate}
+                class="px-6 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 hover:opacity-95 transition flex items-center gap-2"
+              >
+                <Plus class="w-4 h-4" />
+                <span>Nouvelle note chiffrée</span>
+              </button>
+            </div>
+          {/if}
+        </section>
+
+      </div>
     </main>
   </div>
 </div>

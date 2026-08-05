@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { fly, fade, scale } from 'svelte/transition';
-  import { Folder, FolderPlus, FolderOpen, Tag, Pencil, Trash2, Layers, Inbox, Plus, X, Check } from 'lucide-svelte';
+  import { Folder, FolderPlus, FolderOpen, Tag, Pencil, Trash2, Layers, Inbox, Plus, X, Check, ChevronLeft, ChevronRight } from 'lucide-svelte';
   import ConfirmDialog from '$lib/ConfirmDialog.svelte';
 
   const dispatch = createEventDispatcher();
@@ -9,6 +9,7 @@
   export let folders = [];
   export let selected = 'all';
   let dragOverId = null;
+  let collapsed = false;
 
   // Modal State for Create / Rename
   let isModalOpen = false;
@@ -27,6 +28,12 @@
     folderNameInput = '';
     targetFolderId = null;
     isModalOpen = true;
+  }
+
+  function toggleCollapse() {
+    collapsed = !collapsed;
+    // emit event for parent if needed
+    dispatch('toggle', collapsed);
   }
 
   function openRenameModal(id, currentName) {
@@ -72,20 +79,34 @@
   }
 </script>
 
-<aside class="w-64 flex-shrink-0 flex flex-col glass-panel rounded-3xl p-4 border border-white/10 shadow-2xl relative overflow-hidden">
+<aside class="app-sidebar {collapsed ? 'collapsed' : ''} flex-shrink-0 flex flex-col glass-panel rounded-3xl p-3 border border-white/10 shadow-2xl relative overflow-hidden">
   <!-- Top Title Bar -->
   <div class="flex items-center justify-between px-2 mb-4">
     <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
       <Folder class="w-4 h-4 text-cyan-400" />
-      <span>Espaces & Tags</span>
+      <span class="truncate {collapsed ? 'hidden' : ''}">Espaces & Tags</span>
     </div>
-    <button
-      on:click={openCreateModal}
-      class="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-cyan-500/20 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 transition-all duration-200"
-      title="Créer un nouveau tag"
-    >
-      <Plus class="w-4 h-4" />
-    </button>
+    <div class="flex items-center gap-2">
+      <button
+        on:click={toggleCollapse}
+        class="p-1.5 rounded-xl bg-white/[0.02] border border-white/6 text-slate-300 hover:text-cyan-300 transition-all duration-200"
+        title="Réduire la barre latérale"
+      >
+        {#if collapsed}
+          <ChevronRight class="w-4 h-4" />
+        {:else}
+          <ChevronLeft class="w-4 h-4" />
+        {/if}
+      </button>
+
+      <button
+        on:click={openCreateModal}
+        class="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-cyan-500/20 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 transition-all duration-200 {collapsed ? 'hidden' : ''}"
+        title="Créer un nouveau tag"
+      >
+        <Plus class="w-4 h-4" />
+      </button>
+    </div>
   </div>
 
   <!-- Folder List -->
@@ -110,20 +131,20 @@
       >
         <button
           on:click={() => select(f.id)}
-          class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-left transition-all duration-200 {isSelected ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/10 border border-cyan-500/30 text-white shadow-lg shadow-cyan-500/10 font-semibold' : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'}"
+          class="w-full flex items-center justify-between px-3 py-2 rounded-2xl text-left transition-all duration-200 {isSelected ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/10 border border-cyan-500/30 text-white shadow-lg shadow-cyan-500/10 font-semibold' : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'}"
         >
           <div class="flex items-center gap-3 min-w-0">
-            <svelte:component this={IconComponent} class="w-4 h-4 flex-shrink-0 {isSelected ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'}" />
-            <span class="text-sm truncate font-medium">{f.name}</span>
+            <svelte:component this={IconComponent} class="w-5 h-5 flex-shrink-0 {isSelected ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'}" />
+            <span class="text-sm truncate font-medium {collapsed ? 'hidden' : ''}">{f.name}</span>
           </div>
 
           <div class="flex items-center gap-2">
-            <span class="px-2 py-0.5 rounded-full text-xs font-semibold {isSelected ? 'bg-cyan-500/30 text-cyan-200' : 'bg-white/[0.06] text-slate-400 group-hover:text-slate-300'}">
+            <span class="px-2 py-0.5 rounded-full text-xs font-semibold {isSelected ? 'bg-cyan-500/30 text-cyan-200' : 'bg-white/[0.06] text-slate-400 group-hover:text-slate-300'} {collapsed ? 'hidden' : ''}">
               {f.count}
             </span>
 
             {#if f.id !== 'all' && f.id !== 'uncat'}
-              <div class="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+              <div class="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity {collapsed ? 'hidden' : ''}">
                 <button
                   on:click|stopPropagation={() => openRenameModal(f.id, f.name)}
                   class="p-1 text-slate-400 hover:text-cyan-300 hover:bg-white/10 rounded-lg transition"
