@@ -176,12 +176,12 @@
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-bold text-cyan-300 mt-4 mb-2">$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold text-cyan-400 mt-5 mb-2">$1</h2>')
+      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-bold text-slate-300 mt-4 mb-2">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold text-slate-300 mt-5 mb-2">$1</h2>')
       .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-extrabold text-white mt-6 mb-3 pb-2 border-b border-white/10">$1</h1>')
       .replace(/\*\*(.*?)\*\*/gim, '<strong class="font-bold text-white">$1</strong>')
       .replace(/\*(.*?)\*/gim, '<em class="italic text-slate-200">$1</em>')
-      .replace(/`(.*?)`/gim, '<code class="bg-slate-900 text-cyan-300 px-1.5 py-0.5 rounded font-mono text-xs border border-white/10">$1</code>')
+      .replace(/`(.*?)`/gim, '<code class="bg-slate-900 text-slate-300 px-1.5 py-0.5 rounded font-mono text-xs border border-white/10">$1</code>')
       .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc text-slate-300">$1</li>')
       .replace(/\n/g, '<br/>');
     return html;
@@ -202,10 +202,10 @@
 
       <div class="flex items-center gap-2 flex-shrink-0">
         <!-- View Mode Switcher -->
-        <div class="flex items-center p-1 rounded-2xl bg-white/[0.04] border border-white/10">
+        <div class="flex items-center p-1 rounded-2xl bg-white/[0.03] border border-white/10">
           <button
             on:click={() => viewMode = 'write'}
-            class="p-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 {viewMode === 'write' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white'}"
+            class="p-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 {viewMode === 'write' ? 'bg-white/[0.04] text-accent border-accent' : 'text-slate-400 hover:text-white'}"
             title="Mode Édition"
           >
             <Edit3 class="w-3.5 h-3.5" />
@@ -214,7 +214,7 @@
           {#if canSplit}
             <button
               on:click={() => viewMode = 'split'}
-              class="p-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 {viewMode === 'split' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white'}"
+              class="p-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 {viewMode === 'split' ? 'bg-white/[0.04] text-accent border-accent' : 'text-slate-400 hover:text-white'}"
               title="Vue Scindée (écrans larges)"
             >
               <Columns class="w-3.5 h-3.5" />
@@ -223,7 +223,7 @@
           {/if}
           <button
             on:click={() => viewMode = 'preview'}
-            class="p-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 {viewMode === 'preview' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white'}"
+            class="p-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 {viewMode === 'preview' ? 'bg-white/[0.04] text-accent border-accent' : 'text-slate-400 hover:text-white'}"
             title="Aperçu"
           >
             <Eye class="w-3.5 h-3.5" />
@@ -274,9 +274,9 @@
       <!-- Action Buttons (Export, History, Save Indicator) -->
       <div class="flex items-center gap-2">
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/5 text-slate-400">
-          {#if saving}
-            <Loader2 class="w-3 h-3 text-cyan-400 animate-spin" />
-            <span class="text-[11px] text-cyan-300">Sauvegarde…</span>
+        {#if saving}
+            <Loader2 class="w-3 h-3 text-accent animate-spin" />
+            <span class="text-[11px] text-accent">Sauvegarde…</span>
           {:else}
             <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
             <span class="text-[11px] text-slate-300">{status}</span>
@@ -294,7 +294,7 @@
 
         <button
           on:click={openHistory}
-          class="p-2 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/20 transition flex items-center gap-1.5 font-medium"
+          class="p-2 rounded-2xl bg-white/[0.03] border border-white/10 text-slate-300 hover:bg-white/[0.05] transition flex items-center gap-1.5 font-medium"
           title="Historique des versions"
         >
           <History class="w-3.5 h-3.5" />
@@ -311,7 +311,7 @@
       <textarea
         id="main-editor"
         bind:value={body}
-        class="w-full h-full p-4 rounded-2xl glass-input text-slate-100 placeholder-slate-600 font-mono text-sm leading-relaxed resize-none outline-none border border-white/10 transition focus:border-cyan-400/60 overflow-y-auto"
+        class="w-full h-full p-4 rounded-md glass-input text-slate-100 placeholder-slate-600 font-mono text-sm leading-relaxed resize-none outline-none border border-white/10 transition overflow-y-auto"
         placeholder="Commencez à rédiger votre note chiffrée ici (support Markdown)…"
         on:input={() => save()}
       ></textarea>
@@ -332,7 +332,7 @@
       <span><strong>{charCount}</strong> caractères</span>
     </div>
     <div class="flex items-center gap-1 text-slate-400">
-      <FileText class="w-3 h-3 text-cyan-400" />
+      <FileText class="w-3 h-3 icon-muted" />
       <span>AES-GCM Chiffrement Actif</span>
     </div>
   </div>
@@ -355,7 +355,7 @@
       <div class="w-full max-w-2xl glass-panel p-6 rounded-3xl border border-white/10 shadow-2xl flex flex-col max-h-[80vh]">
         <div class="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
           <h4 class="text-sm font-bold text-white flex items-center gap-2">
-            <Eye class="w-4 h-4 text-fuchsia-400" />
+            <Eye class="w-4 h-4 icon-muted" />
             <span>Aperçu de la version archivée</span>
           </h4>
           <button on:click={() => previewContent = ''} class="text-slate-400 hover:text-white p-1 rounded-lg">

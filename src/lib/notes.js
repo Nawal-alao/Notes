@@ -4,7 +4,7 @@ import { arrayBufferToBase64, base64ToArrayBuffer } from '$lib/stores/encryption
 export async function fetchNotes() {
   const { data, error } = await supabase
     .from('notes')
-    .select('id, user_id, title, tags, encrypted_content, content_iv, updated_at, history')
+    .select('id, user_id, title, title_iv, tags, encrypted_content, content_iv, updated_at, history')
     .order('updated_at', { ascending: false });
 
   if (error) throw error;

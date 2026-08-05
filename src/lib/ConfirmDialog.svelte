@@ -24,7 +24,7 @@
   <div class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
     <div class="modal-panel w-full max-w-sm rounded-3xl p-6 space-y-5 shadow-2xl shadow-black/30">
       <div class="flex items-start gap-3">
-        <div class="mt-1 text-cyan-300">
+        <div class="mt-1 text-slate-300">
           {#if variant === 'error'}
             <AlertTriangle class="w-6 h-6 text-rose-400" />
           {:else if variant === 'success'}
@@ -49,7 +49,7 @@
         </button>
         <button
           type="button"
-          class="px-4 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 text-xs font-semibold transition hover:opacity-95"
+          class="px-4 py-2 rounded-2xl btn-primary text-xs font-semibold transition"
           on:click={confirm}
         >
           {confirmLabel}

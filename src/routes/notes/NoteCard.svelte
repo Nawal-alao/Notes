@@ -41,7 +41,7 @@
 <div
   role="button"
   tabindex="0"
-  class="group relative w-full p-4 rounded-2xl cursor-pointer text-left transition-all duration-200 glass-card {isSelected ? 'bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-transparent border-cyan-500/40 ring-1 ring-cyan-500/30 shadow-xl shadow-cyan-500/10' : ''}"
+  class="group relative w-full p-4 rounded-md cursor-pointer text-left transition-all duration-200 glass-card {isSelected ? 'border border-accent ring-1 ring-accent' : ''}"
   on:click={open}
   on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && open()}
   draggable="true"
@@ -49,8 +49,8 @@
     e.dataTransfer.setData('text/plain', note.id);
     e.currentTarget.classList.add('opacity-50', 'scale-95');
     ghostEl = document.createElement('div');
-    ghostEl.className = 'fixed top-[-1000px] bg-slate-900 text-white px-3 py-2 rounded-xl text-xs shadow-2xl border border-cyan-500/40 font-semibold';
-    ghostEl.textContent = note.title || 'Sans titre';
+    ghostEl.className = 'fixed top-[-1000px] bg-slate-900 text-white px-3 py-2 rounded-xl text-xs shadow-2xl border border-white/[0.06] font-semibold';
+    ghostEl.textContent = note.titlePreview || 'Sans titre';
     document.body.appendChild(ghostEl);
     e.dataTransfer.setDragImage(ghostEl, 20, 15);
   }}
@@ -61,16 +61,15 @@
   }}
   in:fly={{ y: 10, duration: 200, delay: Math.min(index * 30, 300) }}
 >
-  <!-- Selected Indicator Pill -->
   {#if isSelected}
-    <div class="absolute left-0 top-3 bottom-3 w-1 bg-gradient-to-b from-cyan-400 to-blue-500 rounded-r-full shadow-lg shadow-cyan-400/50"></div>
+    <div class="absolute left-0 top-3 bottom-3 w-1 bg-[var(--accent)] rounded-r-full"></div>
   {/if}
 
   <div class="flex items-start justify-between gap-3 mb-1.5">
     <div class="flex items-center gap-2 min-w-0">
-      <FileText class="w-4 h-4 flex-shrink-0 {isSelected ? 'text-cyan-400' : 'text-slate-400 group-hover:text-slate-200'}" />
+      <FileText class="w-4 h-4 flex-shrink-0 {isSelected ? 'text-accent' : 'icon-muted group-hover:text-slate-200'}" />
       <h4 class="text-sm font-semibold truncate text-slate-100 group-hover:text-white">
-        {note.titlePreview || note.title || 'Sans titre'}
+        {note.titlePreview || 'Sans titre'}
       </h4>
     </div>
 
@@ -80,17 +79,15 @@
     </div>
   </div>
 
-  <!-- Note Content Snippet -->
   <p class="text-xs text-slate-400 group-hover:text-slate-300 line-clamp-2 leading-relaxed mb-3">
     {note.preview || 'Note vide…'}
   </p>
 
-  <!-- Footer Tags & Actions -->
   <div class="flex items-center justify-between text-xs pt-1 border-t border-white/[0.04]">
     <div class="flex items-center gap-1.5 flex-wrap min-w-0">
       {#if note.tags && note.tags.length > 0}
         {#each note.tags.slice(0, 2) as tag}
-          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.03] text-slate-300 border border-white/[0.06]">
             <Tag class="w-2.5 h-2.5" />
             <span>{tag}</span>
           </span>
@@ -100,11 +97,10 @@
       {/if}
     </div>
 
-    <!-- Actions menu -->
     <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
       <button
         type="button"
-        class="p-1 text-slate-400 hover:text-cyan-300 hover:bg-white/10 rounded-lg transition"
+        class="p-1 text-slate-400 hover:text-accent hover:bg-white/10 rounded-lg transition"
         on:click|stopPropagation={() => exportNote('txt')}
         title="Exporter en TXT"
       >

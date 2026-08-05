@@ -17,9 +17,9 @@
     <div
       in:fly={{ x: 30, duration: 200 }}
       out:fade={{ duration: 180 }}
-      class="toast-item pointer-events-auto rounded-2xl border p-4 pr-3 shadow-2xl shadow-black/30 bg-slate-950/95 backdrop-blur-xl border-white/10 flex items-start gap-3"
+      class="toast-item pointer-events-auto rounded-2xl border p-4 pr-3 shadow-2xl shadow-black/30 bg-slate-950/95 border-white/10 flex items-start gap-3"
     >
-      <div class="mt-0.5 text-cyan-300">
+      <div class="mt-0.5 text-slate-300">
         {#if toast.type === 'success'}
           <CheckCircle2 class="w-5 h-5" />
         {:else if toast.type === 'error'}

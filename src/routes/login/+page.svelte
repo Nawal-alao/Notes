@@ -53,20 +53,16 @@
 </svelte:head>
 
 <div class="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
-  <!-- Background Glow Orbs -->
-  <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none animate-pulse-glow"></div>
-  <div class="absolute bottom-1/4 left-1/3 w-80 h-80 bg-fuchsia-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-
-  <div class="relative w-full max-w-md rounded-3xl glass-panel p-8 md:p-10 shadow-2xl shadow-black/50 border border-white/10">
+  <div class="relative w-full max-w-md rounded-md glass-panel p-8 md:p-10 border">
     <!-- Header Badge -->
-    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold tracking-wider uppercase mb-6">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-transparent border border-white/6 text-slate-300 text-xs font-semibold tracking-wider uppercase mb-6 mono">
       <ShieldCheck class="w-3.5 h-3.5" />
       <span>Espace Chiffré</span>
     </div>
 
     <div class="mb-8 space-y-2">
-      <h1 class="text-3xl font-bold tracking-tight text-white flex items-center gap-2">
-        Bienvenue <Sparkles class="w-5 h-5 text-cyan-400 animate-pulse" />
+      <h1 class="text-3xl font-bold tracking-tight text-white flex items-center gap-2 mono">
+        Bienvenue
       </h1>
       <p class="text-sm text-slate-400 leading-relaxed">
         Connectez-vous pour accéder à votre coffre-fort de notes privées chiffrées de bout en bout.
@@ -88,7 +84,7 @@
             bind:value={email}
             type="email"
             required
-            class="w-full pl-10 pr-4 py-3 rounded-2xl glass-input text-slate-100 placeholder-slate-500 text-sm outline-none transition focus:border-cyan-400/80"
+            class="w-full pl-10 pr-4 py-3 rounded-md glass-input text-slate-100 placeholder-slate-500 text-sm outline-none transition"
             placeholder="votre@email.com"
           />
         </div>
@@ -110,7 +106,7 @@
               type="text"
               required
               minlength="6"
-              class="w-full pl-10 pr-10 py-3 rounded-2xl glass-input text-slate-100 placeholder-slate-500 text-sm outline-none transition focus:border-cyan-400/80"
+              class="w-full pl-10 pr-10 py-3 rounded-md glass-input text-slate-100 placeholder-slate-500 text-sm outline-none transition"
               placeholder="Au moins 6 caractères"
             />
           {:else}
@@ -120,7 +116,7 @@
               type="password"
               required
               minlength="6"
-              class="w-full pl-10 pr-10 py-3 rounded-2xl glass-input text-slate-100 placeholder-slate-500 text-sm outline-none transition focus:border-cyan-400/80"
+              class="w-full pl-10 pr-10 py-3 rounded-md glass-input text-slate-100 placeholder-slate-500 text-sm outline-none transition"
               placeholder="••••••••••••"
             />
           {/if}
@@ -143,11 +139,11 @@
         <button
           type="submit"
           disabled={isLoading}
-          class="w-full relative group overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3.5 font-semibold text-slate-950 text-sm transition-all duration-300 hover:opacity-95 hover:shadow-lg hover:shadow-cyan-500/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+          class="w-full relative group overflow-hidden rounded-md btn-primary px-5 py-3.5 font-semibold text-sm transition-all duration-150 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <div class="flex items-center justify-center gap-2">
             {#if isLoading}
-              <Loader2 class="w-4 h-4 animate-spin text-slate-950" />
+              <Loader2 class="w-4 h-4 animate-spin text-white" />
               <span>Chargement…</span>
             {:else}
               <span>Se connecter</span>
@@ -160,7 +156,7 @@
           type="button"
           on:click={handleSignUp}
           disabled={isLoading}
-          class="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 font-medium text-slate-300 text-sm hover:bg-white/[0.08] hover:text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+          class="w-full rounded-md border border-white/10 bg-transparent px-5 py-3 font-medium text-slate-300 text-sm hover:bg-white/[0.03] transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
         >
           Créer un nouveau compte
         </button>
@@ -168,8 +164,7 @@
     </form>
 
     {#if status}
-      <div class="mt-6 p-3.5 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-md text-xs leading-relaxed text-slate-300 flex items-start gap-2.5 animate-fadeIn">
-        <div class="w-2 h-2 rounded-full bg-cyan-400 mt-1 flex-shrink-0 animate-ping"></div>
+      <div class="mt-6 status-box animate-fadeIn">
         <span>{status}</span>
       </div>
     {/if}

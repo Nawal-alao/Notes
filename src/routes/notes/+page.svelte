@@ -35,7 +35,37 @@
 
   async function load() {
     const session = await fetchNotes();
-    notes = session;
+    const key = get(encryptionStore);
+    if (!key) return goto('/unlock');
+
+    // Decrypt titles and previews for list display
+    notes = await Promise.all((session || []).map(async (n) => {
+      const titleIV = n.title_iv || n.content_iv;
+      let titlePreview = 'Sans titre';
+      let preview = '';
+
+      if (n.title && titleIV) {
+        try {
+          const decryptedTitle = await decryptPayload(key, n.title, titleIV);
+          titlePreview = decryptedTitle || 'Sans titre';
+        } catch (err) {
+          titlePreview = 'Sans titre';
+        }
+      }
+
+      if (n.encrypted_content && n.content_iv) {
+        try {
+          const decryptedContent = await decryptPayload(key, n.encrypted_content, n.content_iv);
+          preview = decryptedContent ? decryptedContent.slice(0, 300) : '';
+        } catch (err) {
+          preview = n.preview || '';
+        }
+      } else {
+        preview = n.preview || '';
+      }
+
+      return { ...n, titlePreview, preview };
+    }));
     buildFolders();
   }
 
@@ -64,14 +94,74 @@
       const oldRow = payload.old || payload.previous;
       if (!newRow && !oldRow) return;
 
-      if (ev === 'INSERT' || payload.type === 'INSERT') {
-        notes = [newRow, ...notes.filter(n => n.id !== newRow.id)];
-      } else if (ev === 'UPDATE' || payload.type === 'UPDATE') {
-        notes = notes.map(n => n.id === newRow.id ? newRow : n);
-      } else if (ev === 'DELETE' || payload.type === 'DELETE') {
-        notes = notes.filter(n => n.id !== oldRow.id);
-      }
-      buildFolders();
+      (async () => {
+        const key = get(encryptionStore);
+        if (!key) return;
+        try {
+          if (ev === 'INSERT' || payload.type === 'INSERT') {
+            try {
+              const titleIV = newRow.title_iv;
+              let title = 'Sans titre';
+              if (newRow.title && titleIV) {
+                try {
+                  title = await decryptPayload(key, newRow.title, titleIV) || 'Sans titre';
+                } catch {
+                  title = 'Sans titre';
+                }
+              }
+
+              let content = '';
+              if (newRow.encrypted_content && newRow.content_iv) {
+                try {
+                  content = await decryptPayload(key, newRow.encrypted_content, newRow.content_iv);
+                } catch {
+                  content = newRow.preview || '';
+                }
+              } else {
+                content = newRow.preview || '';
+              }
+
+              const decrypted = { ...newRow, titlePreview: title, preview: content ? content.slice(0,300) : '' };
+              notes = [decrypted, ...notes.filter(n => n.id !== newRow.id)];
+            } catch (e) {
+              notes = [newRow, ...notes.filter(n => n.id !== newRow.id)];
+            }
+          } else if (ev === 'UPDATE' || payload.type === 'UPDATE') {
+            try {
+              const titleIV = newRow.title_iv || newRow.content_iv;
+              let title = 'Sans titre';
+              if (newRow.title && titleIV) {
+                try {
+                  title = await decryptPayload(key, newRow.title, titleIV) || 'Sans titre';
+                } catch {
+                  title = 'Sans titre';
+                }
+              }
+
+              let content = '';
+              if (newRow.encrypted_content && newRow.content_iv) {
+                try {
+                  content = await decryptPayload(key, newRow.encrypted_content, newRow.content_iv);
+                } catch {
+                  content = newRow.preview || '';
+                }
+              } else {
+                content = newRow.preview || '';
+              }
+
+              const decrypted = { ...newRow, titlePreview: title, preview: content ? content.slice(0,300) : '' };
+              notes = notes.map(n => n.id === newRow.id ? decrypted : n);
+            } catch (e) {
+              notes = notes.map(n => n.id === newRow.id ? newRow : n);
+            }
+          } else if (ev === 'DELETE' || payload.type === 'DELETE') {
+            notes = notes.filter(n => n.id !== oldRow.id);
+          }
+        } catch (e) {
+          console.error('Realtime note handling error', e);
+        }
+        buildFolders();
+      })();
     });
 
     // Keyboard shortcut handler (Ctrl+K or Cmd+K to focus search)
@@ -187,7 +277,7 @@
     else if (selectedFolder !== 'all') list = list.filter(n => (n.tags || []).includes(selectedFolder));
     if (search && search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(n => (n.title || '').toLowerCase().includes(q) || (n.preview || '').toLowerCase().includes(q));
+      list = list.filter(n => ((n.titlePreview || '')).toLowerCase().includes(q) || (n.preview || '').toLowerCase().includes(q));
     }
     return list;
   })();
@@ -202,13 +292,13 @@
   <!-- Top Navigation Header -->
   <header class="flex items-center justify-between px-6 py-3.5 glass-panel rounded-3xl border border-white/10 shadow-2xl flex-shrink-0">
     <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-cyan-500/20">
-        <ShieldCheck class="w-6 h-6" />
+      <div class="w-10 h-10 rounded-md bg-transparent border border-white/6 flex items-center justify-center text-slate-300 font-bold">
+        <ShieldCheck class="w-6 h-6 icon-muted" />
       </div>
       <div>
         <h1 class="text-base font-bold text-white tracking-tight leading-tight flex items-center gap-2">
           Private Notes
-          <span class="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 text-[10px] font-semibold tracking-wider border border-cyan-500/20">v2.0 AES-256</span>
+          <span class="px-2 py-0.5 rounded-full bg-white/[0.03] text-slate-300 text-[10px] font-semibold tracking-wider border border-white/[0.06]">v2.0 AES-256</span>
         </h1>
         <p class="text-xs text-slate-400">Espace de travail chiffré de bout en bout</p>
       </div>
@@ -222,7 +312,7 @@
           bind:this={searchInputEl}
           bind:value={search}
           placeholder="Rechercher des notes (⌘K)…"
-          class="w-full pl-10 pr-9 py-2.5 rounded-2xl glass-input text-slate-100 placeholder-slate-500 text-xs outline-none transition focus:border-cyan-400/80"
+          class="w-full pl-10 pr-9 py-2.5 rounded-md glass-input text-slate-100 placeholder-slate-500 text-xs outline-none transition"
         />
         {#if search}
           <button on:click={() => search = ''} class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5 rounded-md">
@@ -232,7 +322,7 @@
       </div>
 
       <button
-        class="rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-xs font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 hover:opacity-95 transition flex items-center gap-2"
+        class="rounded-md btn-primary px-4 py-2.5 text-xs font-semibold text-white transition flex items-center gap-2"
         on:click={bounceCreate}
         style="transform: scale({$btnScale});"
       >
@@ -270,7 +360,7 @@
         <section class="glass-panel rounded-3xl p-4 border border-white/10 shadow-2xl overflow-hidden overflow-y-auto">
           <div class="flex items-center justify-between px-2 mb-3">
             <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <FileText class="w-3.5 h-3.5 text-cyan-400" />
+              <FileText class="w-3.5 h-3.5 text-slate-400" />
               <span>Notes ({filteredNotesList.length})</span>
             </span>
           </div>
@@ -290,7 +380,7 @@
                 </div>
               {/each}
             {:else}
-              <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-3">
+                <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-3">
                 <FolderOpen class="w-10 h-10 stroke-1 text-slate-600" />
                 <div class="space-y-1">
                   <p class="text-sm font-semibold text-slate-400">Aucune note trouvée</p>
@@ -298,7 +388,7 @@
                 </div>
                 <button
                   on:click={bounceCreate}
-                  class="px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-semibold hover:bg-cyan-500/20 transition flex items-center gap-1.5"
+                  class="px-4 py-2 rounded-md btn-primary text-xs font-semibold text-white flex items-center gap-1.5"
                 >
                   <Plus class="w-3.5 h-3.5" />
                   <span>Créer une note</span>
@@ -318,8 +408,8 @@
             {/key}
           {:else}
             <div class="h-full glass-panel rounded-3xl p-8 border border-white/10 shadow-2xl flex flex-col items-center justify-center text-center space-y-4">
-              <div class="w-16 h-16 rounded-3xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shadow-xl">
-                <Sparkles class="w-8 h-8" />
+              <div class="w-16 h-16 rounded-md bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-slate-300">
+                <Sparkles class="w-8 h-8 icon-muted" />
               </div>
               <div class="max-w-sm space-y-2">
                 <h3 class="text-xl font-bold text-white">Aucune note sélectionnée</h3>
@@ -329,7 +419,7 @@
               </div>
               <button
                 on:click={bounceCreate}
-                class="px-6 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 hover:opacity-95 transition flex items-center gap-2"
+                class="px-6 py-3 rounded-md btn-primary text-xs font-bold text-white transition flex items-center gap-2"
               >
                 <Plus class="w-4 h-4" />
                 <span>Nouvelle note chiffrée</span>
