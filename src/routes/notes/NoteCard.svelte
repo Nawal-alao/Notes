@@ -41,7 +41,7 @@
 <div
   role="button"
   tabindex="0"
-  class="group relative w-full p-4 rounded-md cursor-pointer text-left transition-all duration-200 glass-card {isSelected ? 'border border-accent ring-1 ring-accent' : ''}"
+  class="group relative w-full p-3 rounded-md cursor-pointer text-left transition-all duration-200 glass-card {isSelected ? 'border border-accent ring-1 ring-accent' : ''}"
   on:click={open}
   on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && open()}
   draggable="true"
@@ -49,7 +49,7 @@
     e.dataTransfer.setData('text/plain', note.id);
     e.currentTarget.classList.add('opacity-50', 'scale-95');
     ghostEl = document.createElement('div');
-    ghostEl.className = 'fixed top-[-1000px] bg-slate-900 text-white px-3 py-2 rounded-xl text-xs shadow-2xl border border-white/[0.06] font-semibold';
+    ghostEl.className = 'fixed top-[-1000px] bg-slate-900 text-white px-3 py-2 rounded-md text-xs shadow-2xl border border-white/[0.06] font-semibold';
     ghostEl.textContent = note.titlePreview || 'Sans titre';
     document.body.appendChild(ghostEl);
     e.dataTransfer.setDragImage(ghostEl, 20, 15);
@@ -65,7 +65,7 @@
     <div class="absolute left-0 top-3 bottom-3 w-1 bg-[var(--accent)] rounded-r-full"></div>
   {/if}
 
-  <div class="flex items-start justify-between gap-3 mb-1.5">
+  <div class="flex items-start justify-between gap-3 mb-1">
     <div class="flex items-center gap-2 min-w-0">
       <FileText class="w-4 h-4 flex-shrink-0 {isSelected ? 'text-accent' : 'icon-muted group-hover:text-slate-200'}" />
       <h4 class="text-sm font-semibold truncate text-slate-100 group-hover:text-white">
@@ -79,11 +79,11 @@
     </div>
   </div>
 
-  <p class="text-xs text-slate-400 group-hover:text-slate-300 line-clamp-2 leading-relaxed mb-3">
+  <p class="text-[13px] text-slate-400 group-hover:text-slate-300 line-clamp-2 leading-tight mb-2">
     {note.preview || 'Note vide…'}
   </p>
 
-  <div class="flex items-center justify-between text-xs pt-1 border-t border-white/[0.04]">
+  <div class="flex items-center justify-between text-[11px] pt-1 border-t border-white/[0.04]">
     <div class="flex items-center gap-1.5 flex-wrap min-w-0">
       {#if note.tags && note.tags.length > 0}
         {#each note.tags.slice(0, 2) as tag}

@@ -12,8 +12,11 @@ export async function fetchNotes() {
 }
 
 export async function fetchNoteById(id) {
-  const { data, error } = await supabase.from('notes').select('*').eq('id', id).single();
-  if (error) throw error;
+  const { data, error } = await supabase.from('notes').select('*').eq('id', id).maybeSingle();
+  if (error) {
+    if (error.code === 'PGRST116' || error.status === 406) return null;
+    throw error;
+  }
   return data;
 }
 
@@ -101,18 +104,40 @@ export async function deleteNote(id) {
   return true;
 }
 
-export function subscribeToNotes(callback) {
-  // callback receives the realtime payload from Supabase
-  const channel = supabase
-    .channel('notes_changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, (payload) => {
-      try { callback(payload); } catch (e) { console.error('subscribeToNotes callback error', e); }
-    });
+let activeNotesChannel = null;
 
-  channel.subscribe();
+export function subscribeToNotes(callback) {
+  if (activeNotesChannel) {
+    try {
+      supabase.removeChannel(activeNotesChannel);
+    } catch (e) {
+      console.warn('removeChannel failed', e);
+    }
+    activeNotesChannel = null;
+  }
+
+  const channel = supabase.channel('notes_changes');
+  channel.on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, (payload) => {
+    try { callback(payload); } catch (e) { console.error('subscribeToNotes callback error', e); }
+  });
+
+  channel.subscribe((status) => {
+    if (status !== 'SUBSCRIBED') {
+      console.warn('Realtime subscription status', status);
+    }
+  });
+
+  activeNotesChannel = channel;
 
   return async () => {
-    try { await channel.unsubscribe(); } catch (e) { console.warn('unsubscribe failed', e); }
+    try {
+      if (activeNotesChannel && activeNotesChannel === channel) {
+        await activeNotesChannel.unsubscribe();
+        activeNotesChannel = null;
+      }
+    } catch (e) {
+      console.warn('unsubscribe failed', e);
+    }
   };
 }
 

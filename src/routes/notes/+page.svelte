@@ -14,7 +14,7 @@
   import { supabase } from '$lib/supabase';
   import {
     Plus, Search, Lock, ShieldCheck, FileText, Sparkles, X, 
-    LogOut, FolderOpen, AlertCircle, KeyRound
+    LogOut, FolderOpen, AlertCircle, KeyRound, ChevronsLeft, ChevronsRight
   } from 'lucide-svelte';
 
   const [send, receive] = crossfade({
@@ -32,6 +32,7 @@
   let selectedNoteId = null;
   let search = '';
   let searchInputEl;
+  let notesPanelOpen = true;
 
   async function load() {
     const session = await fetchNotes();
@@ -171,6 +172,10 @@
         e.preventDefault();
         searchInputEl?.focus();
       }
+      if ((e.metaKey || e.ctrlKey) && (e.key === ',' || e.key === '<')) {
+        e.preventDefault();
+        toggleNotesPanel();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
 
@@ -182,6 +187,7 @@
   });
 
   function selectFolder(id) { selectedFolder = id; }
+  function toggleNotesPanel() { notesPanelOpen = !notesPanelOpen; }
 
   async function handleLockVault() {
     encryptionStore.set(null);
@@ -291,7 +297,7 @@
 <div class="flex flex-col h-screen overflow-hidden p-4 md:p-6 gap-4">
   
   <!-- Top Navigation Header -->
-  <header class="flex items-center justify-between px-6 py-3.5 glass-panel rounded-3xl border border-white/10 shadow-2xl flex-shrink-0">
+  <header class="flex items-center justify-between px-6 py-3.5 glass-panel rounded-lg border border-white/10 shadow-2xl flex-shrink-0">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded-md bg-transparent border border-white/6 flex items-center justify-center text-slate-300 font-bold">
         <ShieldCheck class="w-6 h-6 icon-muted" />
@@ -333,7 +339,7 @@
 
       <button
         on:click={handleLockVault}
-        class="p-2.5 rounded-2xl glass-input text-slate-400 hover:text-amber-400 hover:border-amber-400/40 transition"
+        class="p-2.5 rounded-md glass-input text-slate-400 hover:text-amber-400 hover:border-amber-400/40 transition"
         title="Verrouiller le coffre-fort"
       >
         <Lock class="w-4 h-4" />
@@ -341,32 +347,42 @@
     </div>
   </header>
 
-  <!-- Workspace Main Layout Grid (Sidebar + Main) -->
+  <!-- Workspace Main Layout Grid (Sidebar + Notes panel + Centered editor) -->
   <div class="flex-1 min-h-0 flex gap-4 overflow-hidden">
 
     <!-- Sidebar: Folders & Tags (collapsible) -->
     <FolderList
       {folders}
       selected={selectedFolder}
+      notesPanelOpen={notesPanelOpen}
       on:select={(e) => selectFolder(e.detail)}
       on:create={(e) => handleCreateTag(e.detail)}
       on:drop={(e) => onDropEvent(e.detail)}
+      on:toggle-notes-panel={toggleNotesPanel}
     />
 
-    <!-- Main area: Notes list + Editor (responsive two-column inside main) -->
-    <main class="flex-1 min-w-0 h-full overflow-hidden">
-      <div class="main-grid h-full">
-
-        <!-- Notes List Panel -->
-        <section class="glass-panel rounded-3xl p-4 border border-white/10 shadow-2xl overflow-hidden overflow-y-auto">
+    <!-- Notes List Panel (compact, fixed width) -->
+    <aside class={`hidden md:block flex-shrink-0 overflow-hidden transition-all duration-300 ${notesPanelOpen ? 'w-72' : 'w-0'}`}>
+      <section class={`glass-panel rounded-lg p-3 border border-white/10 shadow-2xl h-full flex flex-col overflow-hidden transition-all duration-300 ${notesPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
           <div class="flex items-center justify-between px-2 mb-3">
             <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <FileText class="w-3.5 h-3.5 text-slate-400" />
               <span>Notes ({filteredNotesList.length})</span>
             </span>
+            <button
+              on:click={toggleNotesPanel}
+              class="p-1.5 rounded-md text-slate-400 hover:text-white transition"
+              title={notesPanelOpen ? 'Masquer le panneau notes (Ctrl+,)' : 'Afficher le panneau notes (Ctrl+,)'}
+            >
+              {#if notesPanelOpen}
+                <ChevronsLeft class="w-4 h-4" />
+              {:else}
+                <ChevronsRight class="w-4 h-4" />
+              {/if}
+            </button>
           </div>
 
-          <div class="flex-1 overflow-y-auto pr-1 space-y-2.5 h-[calc(100%-48px)]">
+        <div class="flex-1 overflow-y-auto pr-1 space-y-2.5 h-[calc(100%-44px)]">
             {#if filteredNotesList.length > 0}
               {#each filteredNotesList as note, i (note.id)}
                 <div animate:flip={{ duration: 200 }}>
@@ -381,7 +397,7 @@
                 </div>
               {/each}
             {:else}
-                <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-3">
+                <div class="h-full flex flex-col items-center justify-center text-center p-4 text-slate-500 space-y-3">
                 <FolderOpen class="w-10 h-10 stroke-1 text-slate-600" />
                 <div class="space-y-1">
                   <p class="text-sm font-semibold text-slate-400">Aucune note trouvée</p>
@@ -389,7 +405,7 @@
                 </div>
                 <button
                   on:click={bounceCreate}
-                  class="px-4 py-2 rounded-md btn-primary text-xs font-semibold text-white flex items-center gap-1.5"
+                  class="px-3 py-2 rounded-md btn-primary text-xs font-semibold text-white flex items-center gap-1.5"
                 >
                   <Plus class="w-3.5 h-3.5" />
                   <span>Créer une note</span>
@@ -397,10 +413,13 @@
               </div>
             {/if}
           </div>
-        </section>
+      </section>
+    </aside>
 
-        <!-- Editor Panel -->
-        <section class="h-full">
+    <!-- Editor area: centered, comfortable reading width -->
+    <main class="flex-1 min-w-0 h-full overflow-auto">
+      <div class="flex justify-center w-full h-full">
+        <div class="w-full max-w-[760px] h-full">
           {#if selectedNoteId}
             {#key selectedNoteId}
               <div in:receive|local out:send|local class="h-full">
@@ -408,7 +427,7 @@
               </div>
             {/key}
           {:else}
-            <div class="h-full glass-panel rounded-3xl p-8 border border-white/10 shadow-2xl flex flex-col items-center justify-center text-center space-y-4">
+            <div class="h-full glass-panel rounded-lg p-8 border border-white/10 shadow-2xl flex flex-col items-center justify-center text-center space-y-4">
               <div class="w-16 h-16 rounded-md bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-slate-300">
                 <Sparkles class="w-8 h-8 icon-muted" />
               </div>
@@ -427,10 +446,10 @@
               </button>
             </div>
           {/if}
-        </section>
-
+        </div>
       </div>
     </main>
+
   </div>
 </div>
 

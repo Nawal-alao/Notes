@@ -107,8 +107,10 @@ body {
 .icon-muted { color: #9a9a9a; }
 .icon-muted:hover { color: var(--text); }
 
-/* Make rounded sizes subtler */
-.rounded-md { border-radius: 6px; }
+/* Make rounded sizes subtler and more angular */
+.rounded-3xl, .rounded-2xl, .rounded-xl { border-radius: 8px !important; }
+.rounded-lg { border-radius: 6px !important; }
+.rounded-md { border-radius: 6px !important; }
 
 /* Status / info box */
 .status-box { background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); padding:0.875rem; border-radius:8px; color:var(--muted); }

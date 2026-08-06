@@ -8,7 +8,9 @@
 
   export let folders = [];
   export let selected = 'all';
+  export let notesPanelOpen = true;
   let dragOverId = null;
+  let railHovered = false;
 
   // Modal State for Create / Rename
   let isModalOpen = false;
@@ -19,6 +21,7 @@
   let deleteTargetId = null;
 
   function select(id) { dispatch('select', id); }
+  function toggleNotesPanel() { dispatch('toggle-notes-panel'); }
   function openCreateModal() { modalMode = 'create'; folderNameInput = ''; targetFolderId = null; isModalOpen = true; }
   function openRenameModal(id, currentName) { modalMode = 'rename'; folderNameInput = currentName; targetFolderId = id; isModalOpen = true; }
 
@@ -37,7 +40,7 @@
 
 </script>
 
-<aside class="app-sidebar flex-shrink-0 relative">
+<aside class="app-sidebar flex-shrink-0 relative" on:mouseenter={() => railHovered = true} on:mouseleave={() => railHovered = false}>
   <!-- Collapsed rail (icons only) -- visible by default -->
   <div class="rail-collapsed flex flex-col items-center py-3 gap-3">
     <div class="w-10 h-10 flex items-center justify-center rounded-md">
@@ -54,13 +57,20 @@
         </div>
       {/each}
     </div>
-    <div class="mt-auto pb-2">
+    <div class="mt-auto pb-2 flex flex-col items-center gap-2">
+      <button on:click={toggleNotesPanel} class="p-2 rounded-md text-slate-400 hover:text-white transition" title={notesPanelOpen ? 'Masquer le panneau notes (Ctrl+,)' : 'Afficher le panneau notes (Ctrl+,)'}>
+        {#if notesPanelOpen}
+          <FolderOpen class="w-5 h-5" />
+        {:else}
+          <Folder class="w-5 h-5" />
+        {/if}
+      </button>
       <button on:click={openCreateModal} class="p-2 rounded-md text-slate-400 hover:text-white transition" title="Créer un tag"><Plus class="w-5 h-5" /></button>
     </div>
   </div>
 
   <!-- Expanded popout (overlay on hover) -->
-  <div class="rail-popout" aria-hidden="true">
+  <div class="rail-popout" aria-hidden={!railHovered} inert={!railHovered}>
     <div class="flex items-center gap-3 mb-4">
       <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
         <Folder class="w-4 h-4 text-slate-300" />
@@ -106,7 +116,7 @@
   <!-- Create/Rename Tag Modal -->
   {#if isModalOpen}
     <div transition:fade={{ duration: 150 }} class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div transition:scale={{ duration: 180, start: 0.95 }} class="w-full max-w-sm glass-panel p-6 rounded-3xl border border-white/10 space-y-4">
+      <div transition:scale={{ duration: 180, start: 0.95 }} class="w-full max-w-sm glass-panel p-6 rounded-lg border border-white/10 space-y-4">
         <div class="flex items-center justify-between">
           <h3 class="text-base font-bold text-white flex items-center gap-2">
             <Tag class="w-4 h-4 text-slate-300" />
@@ -135,6 +145,7 @@
   .rail-collapsed { width: 64px; height: 100%; }
   .rail-popout { position: absolute; left: 0; top: 0; width: 240px; height: 100%; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.45); opacity: 0; pointer-events: none; transform: translateX(-8px); transition: opacity 220ms cubic-bezier(0.4,0,0.2,1), transform 220ms cubic-bezier(0.4,0,0.2,1); z-index: 30; }
   .app-sidebar:hover .rail-popout { opacity: 1; pointer-events: auto; transform: translateX(0); }
+  .app-sidebar:hover .rail-popout[inert] { pointer-events: auto; }
   .badge-collapsed { position: absolute; right: 8px; top: 6px; background: rgba(255,255,255,0.04); color: var(--text); font-size: 10px; padding: 2px 6px; border-radius: 999px; }
   /* ensure popout scrolls independently */
   .rail-popout nav { max-height: calc(100vh - 140px); overflow-y: auto; }

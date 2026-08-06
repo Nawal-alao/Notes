@@ -3,6 +3,7 @@
   import { writable, get } from 'svelte/store';
   import { slide, fade } from 'svelte/transition';
   import { encryptionStore } from '$lib/stores/encryption';
+  import { notify } from '$lib/stores/toast';
   import { makeEncryptedPayload, decryptPayload, upsertNote, fetchNoteById } from '$lib/notes';
   import HistoryPanel from './HistoryPanel.svelte';
   import { goto } from '$app/navigation';
@@ -39,31 +40,33 @@
     if (!id) return;
     const key = get(encryptionStore);
     if (!key) return goto('/unlock');
-    const row = await fetchNoteById(id);
-    currentNote = row;
-    debugRow = row;
-    const debugInfo = {
-      id: row.id,
-      title: row.title,
-      title_iv: row.title_iv,
-      content_iv: row.content_iv,
-      encrypted_content: row.encrypted_content,
-      titleType: typeof row.title,
-      titleIVType: typeof row.title_iv,
-      contentIVType: typeof row.content_iv,
-      encryptedContentType: typeof row.encrypted_content,
-      titleLength: row.title?.length,
-      titleIVLength: row.title_iv?.length,
-      contentIVLength: row.content_iv?.length,
-      encryptedContentLength: row.encrypted_content?.length,
-      titleJSON: JSON.stringify(row.title),
-      titleIVJSON: JSON.stringify(row.title_iv),
-      contentIVJSON: JSON.stringify(row.content_iv),
-      encryptedContentJSON: JSON.stringify(row.encrypted_content)
-    };
-    console.log('Editor loadNote row', debugInfo);
-    window.__noteDebug = debugInfo;
+
     try {
+      const row = await fetchNoteById(id);
+      currentNote = row;
+      debugRow = row;
+      const debugInfo = {
+        id: row.id,
+        title: row.title,
+        title_iv: row.title_iv,
+        content_iv: row.content_iv,
+        encrypted_content: row.encrypted_content,
+        titleType: typeof row.title,
+        titleIVType: typeof row.title_iv,
+        contentIVType: typeof row.content_iv,
+        encryptedContentType: typeof row.encrypted_content,
+        titleLength: row.title?.length,
+        titleIVLength: row.title_iv?.length,
+        contentIVLength: row.content_iv?.length,
+        encryptedContentLength: row.encrypted_content?.length,
+        titleJSON: JSON.stringify(row.title),
+        titleIVJSON: JSON.stringify(row.title_iv),
+        contentIVJSON: JSON.stringify(row.content_iv),
+        encryptedContentJSON: JSON.stringify(row.encrypted_content)
+      };
+      console.log('Editor loadNote row', debugInfo);
+      window.__noteDebug = debugInfo;
+
       let t = row.title || '';
       const titleIV = row.title_iv || row.content_iv;
       try {
@@ -88,8 +91,12 @@
         status = row.encrypted_content ? 'Contenu illisible — ancienne note' : 'Enregistré';
       }
     } catch (e) {
-      console.error('Note load failed', { id: row?.id, title: row?.title, title_iv: row?.title_iv, content_iv: row?.content_iv }, e);
-      status = 'Erreur de déchiffrement';
+      console.error('Note load failed', e);
+      currentNote = null;
+      title = '';
+      body = '';
+      status = 'Impossible de charger la note';
+      notify({ message: 'La note n’a pas pu être chargée.', type: 'error' });
     }
   }
 
@@ -226,7 +233,7 @@
   }
 </script>
 
-<div class="flex flex-col h-full glass-panel rounded-3xl p-6 border border-white/10 shadow-2xl relative overflow-hidden transition-all duration-300 {isZenMode ? 'fixed inset-0 z-50 rounded-none border-0 p-8 bg-[#090d16]' : ''}">
+<div class="flex flex-col h-full glass-panel rounded-lg p-6 border border-white/10 shadow-2xl relative overflow-hidden transition-all duration-300 {isZenMode ? 'fixed inset-0 z-50 rounded-none border-0 p-8 bg-[#090d16]' : ''}">
   
   <!-- Header Title & Mode Bar -->
   <div class="space-y-4 mb-4 pb-4 border-b border-white/10">
@@ -240,7 +247,7 @@
 
       <div class="flex items-center gap-2 flex-shrink-0">
         <!-- View Mode Switcher -->
-        <div class="flex items-center p-1 rounded-2xl bg-white/[0.03] border border-white/10">
+        <div class="flex items-center p-1 rounded-md bg-white/[0.03] border border-white/10">
           <button
             on:click={() => viewMode = 'write'}
             class="p-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 {viewMode === 'write' ? 'bg-white/[0.04] text-accent border-accent' : 'text-slate-400 hover:text-white'}"
@@ -272,7 +279,7 @@
         <!-- Zen Mode Toggle -->
         <button
           on:click={() => isZenMode = !isZenMode}
-          class="p-2 rounded-2xl bg-white/[0.04] border border-white/10 text-slate-400 hover:text-white hover:bg-white/[0.08] transition"
+          class="p-2 rounded-md bg-white/[0.04] border border-white/10 text-slate-400 hover:text-white hover:bg-white/[0.08] transition"
           title={isZenMode ? "Quitter le mode Zen" : "Mode Zen plein écran"}
         >
           {#if isZenMode}
@@ -286,7 +293,7 @@
 
     <!-- Formatting Toolbar & Status -->
     <div class="flex items-center justify-between gap-3 text-xs flex-wrap">
-      <div class="flex items-center gap-1.5 flex-wrap bg-white/[0.03] p-1.5 rounded-2xl border border-white/5">
+      <div class="flex items-center gap-1.5 flex-wrap bg-white/[0.03] p-1.5 rounded-md border border-white/5">
         <button on:click={() => applyFormat({ start: '**', end: '**' })} class="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Gras (**texte**)">
           <Bold class="w-3.5 h-3.5" />
         </button>
@@ -323,7 +330,7 @@
 
         <button
           on:click={exportTxt}
-          class="p-2 rounded-2xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.08] transition flex items-center gap-1.5"
+          class="p-2 rounded-md bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.08] transition flex items-center gap-1.5"
           title="Exporter en fichier .txt"
         >
           <Download class="w-3.5 h-3.5" />
@@ -332,7 +339,7 @@
 
         <button
           on:click={openHistory}
-          class="p-2 rounded-2xl bg-white/[0.03] border border-white/10 text-slate-300 hover:bg-white/[0.05] transition flex items-center gap-1.5 font-medium"
+          class="p-2 rounded-md bg-white/[0.03] border border-white/10 text-slate-300 hover:bg-white/[0.05] transition flex items-center gap-1.5 font-medium"
           title="Historique des versions"
         >
           <History class="w-3.5 h-3.5" />
@@ -390,7 +397,7 @@
   <!-- History Preview Modal -->
   {#if previewContent}
     <div transition:fade={{ duration: 150 }} class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-6">
-      <div class="w-full max-w-2xl glass-panel p-6 rounded-3xl border border-white/10 shadow-2xl flex flex-col max-h-[80vh]">
+      <div class="w-full max-w-2xl glass-panel p-6 rounded-lg border border-white/10 shadow-2xl flex flex-col max-h-[80vh]">
         <div class="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
           <h4 class="text-sm font-bold text-white flex items-center gap-2">
             <Eye class="w-4 h-4 icon-muted" />
@@ -401,12 +408,13 @@
           </button>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-4 rounded-2xl bg-slate-950/60 font-mono text-xs leading-relaxed text-slate-200 whitespace-pre-wrap border border-white/5">
+        <div class="flex-1 overflow-y-auto p-4 rounded-md bg-slate-950/60 font-mono text-xs leading-relaxed text-slate-200 whitespace-pre-wrap border border-white/5">
           {previewContent}
-        </div>
+          </div>
+
 
         <div class="mt-4 pt-3 flex justify-end">
-          <button on:click={() => previewContent = ''} class="px-4 py-2 rounded-xl bg-white/[0.06] text-xs font-semibold text-slate-300 hover:text-white transition">
+          <button on:click={() => previewContent = ''} class="px-4 py-2 rounded-md bg-white/[0.06] text-xs font-semibold text-slate-300 hover:text-white transition">
             Fermer l'aperçu
           </button>
         </div>
