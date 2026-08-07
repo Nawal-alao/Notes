@@ -44,15 +44,15 @@
     // Decrypt titles and previews for list display
     notes = await Promise.all((session || []).map(async (n) => {
       const titleIV = n.title_iv || n.content_iv;
-      let titlePreview = 'Sans titre';
+      let titlePreview = '';
       let preview = '';
 
       if (n.title && titleIV) {
         try {
-          const decryptedTitle = await decryptPayload(key, n.title, titleIV);
-          titlePreview = decryptedTitle || 'Sans titre';
+          const decryptedTitle = String(await decryptPayload(key, n.title, titleIV) || '').trim();
+          if (decryptedTitle) titlePreview = decryptedTitle;
         } catch (err) {
-          titlePreview = 'Sans titre';
+          titlePreview = '';
         }
       }
 
@@ -60,17 +60,67 @@
       if (n.encrypted_content && contentIV) {
         try {
           const decryptedContent = await decryptPayload(key, n.encrypted_content, contentIV);
-          preview = decryptedContent ? decryptedContent.slice(0, 300) : '';
+          preview = generatePreviewSnippet(decryptedContent || '');
+          if (!titlePreview) titlePreview = generateTitleFallback('', decryptedContent || '');
         } catch (err) {
-          preview = n.preview || '';
+          preview = generatePreviewSnippet(n.preview || '');
+          if (!titlePreview) titlePreview = generateTitleFallback('', n.preview || '');
         }
       } else {
-        preview = n.preview || '';
+        const content = n.preview || '';
+        preview = generatePreviewSnippet(content);
+        if (!titlePreview) titlePreview = generateTitleFallback('', content);
       }
 
       return { ...n, titlePreview, preview };
     }));
     buildFolders();
+  }
+
+  function stripMarkdownSyntax(text) {
+    if (!text) return '';
+    let result = String(text);
+    result = result.replace(/```[\s\S]*?```/g, ' ');
+    result = result.replace(/`([^`]+)`/g, '$1');
+    result = result.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1');
+    result = result.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+    result = result.replace(/^(#{1,6})\s+/gm, '');
+    result = result.replace(/^\s*[-*+]\s+/gm, '');
+    result = result.replace(/^\s*\d+\.\s+/gm, '');
+    result = result.replace(/^\s*>\s?/gm, '');
+    result = result.replace(/~~(.*?)~~/g, '$1');
+    result = result.replace(/(\*\*|__)(.*?)\1/g, '$2');
+    result = result.replace(/(\*|_)(.*?)\1/g, '$2');
+    result = result.replace(/\|/g, ' ');
+    result = result.replace(/[-=]{2,}\s*$/gm, '');
+    result = result.replace(/\s+/g, ' ');
+    result = result.trim();
+    return result;
+  }
+
+  function generateTitleFallback(title, body) {
+    const normalized = String(title || '').trim();
+    if (normalized) return normalized;
+    if (!body) return 'Sans titre';
+
+    const lines = body.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    for (const line of lines) {
+      const heading = line.match(/^(#{1,6})\s+(.*)$/);
+      if (heading) {
+        return stripMarkdownSyntax(heading[2]).trim() || 'Sans titre';
+      }
+    }
+
+    const firstLine = stripMarkdownSyntax(lines[0] || '').trim();
+    if (!firstLine) return 'Sans titre';
+    return firstLine.length > 60 ? firstLine.slice(0, 60).trimEnd() + '…' : firstLine;
+  }
+
+  function generatePreviewSnippet(body) {
+    if (!body) return 'Note vide…';
+    const cleaned = stripMarkdownSyntax(body);
+    const excerpt = cleaned.length > 180 ? cleaned.slice(0, 180).trimEnd() + '…' : cleaned;
+    return excerpt;
   }
 
   function buildFolders() {
@@ -132,7 +182,11 @@
                 content = newRow.preview || '';
               }
 
-              const decrypted = { ...newRow, titlePreview: title, preview: content ? content.slice(0,300) : '' };
+              const decrypted = {
+                ...newRow,
+                titlePreview: generateTitleFallback(title, content || ''),
+                preview: generatePreviewSnippet(content || '')
+              };
               notes = [decrypted, ...notes.filter(n => n.id !== newRow.id)];
             } catch (e) {
               notes = [newRow, ...notes.filter(n => n.id !== newRow.id)];
@@ -160,7 +214,11 @@
                 content = newRow.preview || '';
               }
 
-              const decrypted = { ...newRow, titlePreview: title, preview: content ? content.slice(0,300) : '' };
+              const decrypted = {
+                ...newRow,
+                titlePreview: generateTitleFallback(title, content || ''),
+                preview: generatePreviewSnippet(content || '')
+              };
               notes = notes.map(n => n.id === newRow.id ? decrypted : n);
             } catch (e) {
               notes = notes.map(n => n.id === newRow.id ? newRow : n);
@@ -421,7 +479,7 @@
     <!-- Editor area: centered, comfortable reading width -->
     <main class="flex-1 min-w-0 h-full overflow-auto">
       <div class="flex justify-center w-full h-full">
-        <div class="w-full max-w-[760px] h-full">
+        <div class="w-full max-w-[900px] h-full">
           {#if selectedNoteId}
             {#key selectedNoteId}
               <div in:receive|local out:send|local class="h-full">

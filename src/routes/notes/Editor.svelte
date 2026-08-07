@@ -8,8 +8,9 @@
   import HistoryPanel from './HistoryPanel.svelte';
   import { goto } from '$app/navigation';
   import {
-    Bold, Italic, Heading1, Heading2, List, Code, Link, 
-    Maximize2, Minimize2, History, Download, Eye, Edit3, Columns, 
+    Bold, Italic, Strikethrough, Heading1, Heading2, Heading3, List, ListOrdered, ListCheck,
+    Quote, Code, Link2, Minus, Table2, Terminal,
+    Maximize2, Minimize2, History, Download, Eye, Edit3, Columns,
     Check, Loader2, Sparkles, X, FileText
   } from 'lucide-svelte';
 
@@ -44,9 +45,41 @@
     italic: false,
     heading1: false,
     heading2: false,
+    heading3: false,
     list: false,
+    orderedList: false,
     code: false
   };
+
+  let showLinkModal = false;
+  let linkUrl = '';
+  let linkText = '';
+  let linkSelectionStart = 0;
+  let linkSelectionEnd = 0;
+  let previewHtml = '<span class="text-slate-600 italic">Aucun contenu à prévisualiser…</span>';
+  let marked = null;
+  let hljs = null;
+  let markdownReady = false;
+
+  function loadExternalScript(src) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[src="${src}"]`);
+      if (existing) {
+        existing.addEventListener('load', () => resolve(existing));
+        existing.addEventListener('error', () => reject(new Error(`Failed to load script: ${src}`)));
+        if (existing.readyState === 'complete' || existing.readyState === 'loaded') {
+          resolve(existing);
+        }
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.onload = () => resolve(script);
+      script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+      document.head.appendChild(script);
+    });
+  }
 
   async function loadNote(id) {
     if (!id) return;
@@ -196,10 +229,158 @@
     activeFormat.code = isWrapped(start, end, '`');
     activeFormat.heading1 = prefix === '# ';
     activeFormat.heading2 = prefix === '## ';
-    activeFormat.list = prefix === '- ';
+    activeFormat.heading3 = prefix === '### ';
+    activeFormat.list = prefix === '- ' || prefix === '* ';
+    activeFormat.orderedList = /^\d+\.\s/.test(prefix);
   }
 
   const save = debounce(() => { doSave(); }, 600);
+
+  async function loadMarkdownLibs() {
+    if (markdownReady) return;
+    try {
+      const markedModule = await import('https://cdn.jsdelivr.net/npm/marked@8.0.0/lib/marked.esm.js');
+      marked = markedModule.marked || markedModule.default || markedModule;
+
+      await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js');
+      hljs = window.hljs;
+      if (!hljs) {
+        throw new Error('highlight.js failed to initialize');
+      }
+
+      marked.setOptions({
+        gfm: true,
+        breaks: false,
+        headerIds: false,
+        mangle: false,
+        highlight: (code, lang) => {
+          try {
+            if (lang && hljs.getLanguage?.(lang)) {
+              return hljs.highlight(code, { language: lang }).value;
+            }
+            return hljs.highlightAuto?.(code).value || escapeHtml(code);
+          } catch (e) {
+            return escapeHtml(code);
+          }
+        }
+      });
+      markdownReady = true;
+    } catch (err) {
+      console.error('Chargement Markdown échoué', err);
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  async function renderMarkdown(content) {
+    if (!content) {
+      return '<span class="text-slate-600 italic">Aucun contenu à prévisualiser…</span>';
+    }
+    await loadMarkdownLibs();
+    if (marked) {
+      try {
+        return marked.parse(content);
+      } catch (err) {
+        console.error('Échec rendu Markdown', err);
+      }
+    }
+    return simpleMarkdown(content);
+  }
+
+  const updatePreview = debounce(async () => {
+    previewHtml = await renderMarkdown(body);
+  }, 200);
+
+  function insertAtCursor(text, cursorOffset = 0) {
+    if (!editorEl) return;
+    const start = editorEl.selectionStart;
+    const end = editorEl.selectionEnd;
+    const before = body.slice(0, start);
+    const after = body.slice(end);
+    body = before + text + after;
+    tick().then(() => {
+      editorEl.focus();
+      const pos = start + cursorOffset;
+      editorEl.setSelectionRange(pos, pos);
+    });
+    save();
+  }
+
+  function applyLinePrefix(prefix) {
+    if (!editorEl) return;
+    const start = editorEl.selectionStart;
+    const end = editorEl.selectionEnd;
+    const lineStart = body.lastIndexOf('\n', start - 1) + 1;
+    const lineEndIndex = body.indexOf('\n', end);
+    const lineEnd = lineEndIndex === -1 ? body.length : lineEndIndex;
+    const block = body.slice(lineStart, lineEnd);
+    const lines = block.split('\n');
+    const transformed = lines.map((line) => {
+      if (line.trim().length === 0) return prefix.trimEnd();
+      return prefix + line.replace(/^\s*/, '');
+    }).join('\n');
+    body = body.slice(0, lineStart) + transformed + body.slice(lineEnd);
+    tick(() => {
+      editorEl.focus();
+      editorEl.setSelectionRange(lineStart, lineStart + transformed.length);
+    });
+    save();
+  }
+
+  function openLinkModal() {
+    if (!editorEl) return;
+    linkSelectionStart = editorEl.selectionStart;
+    linkSelectionEnd = editorEl.selectionEnd;
+    linkText = body.slice(linkSelectionStart, linkSelectionEnd).trim();
+    linkUrl = '';
+    showLinkModal = true;
+  }
+
+  function insertLinkMarkdown() {
+    if (!linkUrl) return;
+    const start = linkSelectionStart;
+    const end = linkSelectionEnd;
+    const text = linkText || body.slice(start, end).trim() || 'lien';
+    const markdown = `[${text}](${linkUrl})`;
+    const before = body.slice(0, start);
+    const after = body.slice(end);
+    body = before + markdown + after;
+    showLinkModal = false;
+    linkText = '';
+    linkUrl = '';
+    tick(() => {
+      editorEl?.focus();
+      const pos = start + markdown.length;
+      editorEl?.setSelectionRange(pos, pos);
+    });
+    save();
+  }
+
+  function insertCodeBlock() {
+    const lang = window.prompt('Langage de syntaxe (optionnel) : js, python, etc.');
+    if (!editorEl) return;
+    const start = editorEl.selectionStart;
+    const end = editorEl.selectionEnd;
+    const selection = body.slice(start, end) || 'Votre code ici';
+    const block = `\`\`\`${lang?.trim() || ''}\n${selection}\n\`\`\`\n`;
+    insertAtCursor(block, block.length);
+  }
+
+  function insertHorizontalRule() {
+    insertAtCursor('\n---\n', 5);
+  }
+
+  function insertTable() {
+    insertAtCursor('\n| Colonne 1 | Colonne 2 |\n| --- | --- |\n| Valeur 1 | Valeur 2 |\n', 0);
+  }
+
+  $: if (viewMode === 'preview' || (viewMode === 'split' && canSplit)) updatePreview();
+  $: if (body && (viewMode === 'preview' || (viewMode === 'split' && canSplit))) updatePreview();
 
   $: if (noteId) loadNote(noteId);
 
@@ -286,6 +467,10 @@
   }
 </script>
 
+<svelte:head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark-dimmed.min.css" />
+</svelte:head>
+
 <div class="flex flex-col h-full glass-panel rounded-lg p-6 border border-white/10 shadow-2xl relative overflow-hidden transition-all duration-300 {isZenMode ? 'fixed inset-0 z-50 rounded-none border-0 p-8 bg-[#090d16]' : ''}">
   
   <!-- Header Title & Mode Bar -->
@@ -353,6 +538,9 @@
         <button on:click={() => { applyFormat({ start: '*', end: '*' }); updateActiveFormat(); }} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition {activeFormat.italic ? 'active' : ''}" title="Italique (*texte*)">
           <Italic class="w-3.5 h-3.5" />
         </button>
+        <button on:click={() => { applyFormat({ start: '~~', end: '~~' }); updateActiveFormat(); }} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Barré (~~texte~~)">
+          <Strikethrough class="w-3.5 h-3.5" />
+        </button>
         <div class="w-px h-4 bg-white/10 mx-1"></div>
         <button on:click={() => { applyFormat({ start: '# ', end: '' }); updateActiveFormat(); }} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition {activeFormat.heading1 ? 'active' : ''}" title="Titre 1">
           <Heading1 class="w-3.5 h-3.5" />
@@ -360,12 +548,37 @@
         <button on:click={() => { applyFormat({ start: '## ', end: '' }); updateActiveFormat(); }} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition {activeFormat.heading2 ? 'active' : ''}" title="Titre 2">
           <Heading2 class="w-3.5 h-3.5" />
         </button>
+        <button on:click={() => { applyFormat({ start: '### ', end: '' }); updateActiveFormat(); }} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition {activeFormat.heading3 ? 'active' : ''}" title="Titre 3">
+          <Heading3 class="w-3.5 h-3.5" />
+        </button>
         <div class="w-px h-4 bg-white/10 mx-1"></div>
-        <button on:click={() => { applyFormat({ start: '- ', end: '' }); updateActiveFormat(); }} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition {activeFormat.list ? 'active' : ''}" title="Liste à puces">
+        <button on:click={() => applyLinePrefix('- ')} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Liste à puces">
           <List class="w-3.5 h-3.5" />
         </button>
+        <button on:click={() => applyLinePrefix('1. ')} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Liste numérotée">
+          <ListOrdered class="w-3.5 h-3.5" />
+        </button>
+        <button on:click={() => applyLinePrefix('- [ ] ')} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Liste de tâches">
+          <ListCheck class="w-3.5 h-3.5" />
+        </button>
+        <button on:click={() => applyLinePrefix('> ')} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Citation">
+          <Quote class="w-3.5 h-3.5" />
+        </button>
+        <div class="w-px h-4 bg-white/10 mx-1"></div>
         <button on:click={() => { applyFormat({ start: '`', end: '`' }); updateActiveFormat(); }} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition {activeFormat.code ? 'active' : ''}" title="Code en ligne">
           <Code class="w-3.5 h-3.5" />
+        </button>
+        <button on:click={insertCodeBlock} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Bloc de code">
+          <Terminal class="w-3.5 h-3.5" />
+        </button>
+        <button on:click={openLinkModal} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Lien [texte](url)">
+          <Link2 class="w-3.5 h-3.5" />
+        </button>
+        <button on:click={insertHorizontalRule} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Ligne horizontale">
+          <Minus class="w-3.5 h-3.5" />
+        </button>
+        <button on:click={insertTable} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Tableau Markdown">
+          <Table2 class="w-3.5 h-3.5" />
         </button>
       </div>
 
@@ -410,18 +623,18 @@
         id="main-editor"
         bind:this={editorEl}
         bind:value={body}
-        class="editor-textarea w-full h-full p-4 rounded-md glass-input text-slate-100 placeholder-slate-600 font-sans text-sm leading-relaxed resize-none outline-none border border-white/10 transition overflow-y-auto"
+        class="editor-textarea w-full h-full min-h-[420px] md:min-h-[460px] p-4 rounded-md glass-input text-slate-100 placeholder-slate-600 font-sans text-sm leading-relaxed resize-none outline-none border border-white/10 transition overflow-y-auto"
         placeholder="Commencez à rédiger votre note chiffrée ici (support Markdown)…"
-        on:input={() => { save(); updateActiveFormat(); }}
-        on:keyup={updateActiveFormat}
-        on:mouseup={updateActiveFormat}
+        on:input={() => { save(); updateActiveFormat(); updatePreview(); }}
+        on:keyup={() => { updateActiveFormat(); updatePreview(); }}
+        on:mouseup={() => { updateActiveFormat(); updatePreview(); }}
       ></textarea>
     {/if}
 
     <!-- Live Markdown Preview -->
     {#if viewMode === 'preview' || (viewMode === 'split' && canSplit)}
-      <div class="w-full h-full p-6 rounded-2xl glass-card border border-white/10 overflow-y-auto leading-relaxed prose prose-invert max-w-none text-slate-200">
-        <div>{@html simpleMarkdown(body)}</div>
+      <div class="w-full h-full p-6 rounded-2xl glass-card border border-white/10 overflow-y-auto overflow-x-auto leading-relaxed prose prose-invert max-w-none text-slate-200 preview-content">
+        <div>{@html previewHtml}</div>
       </div>
     {/if}
   </div>
@@ -472,6 +685,48 @@
         <div class="mt-4 pt-3 flex justify-end">
           <button on:click={() => previewContent = ''} class="px-4 py-2 rounded-md bg-white/[0.06] text-xs font-semibold text-slate-300 hover:text-white transition">
             Fermer l'aperçu
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  {#if showLinkModal}
+    <div transition:fade={{ duration: 150 }} class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
+      <div class="w-full max-w-lg glass-panel p-6 rounded-3xl border border-white/10 shadow-2xl">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-sm font-bold text-white">Insérer un lien Markdown</h3>
+            <p class="text-xs text-slate-400">Le texte sélectionné sera utilisé comme texte du lien.</p>
+          </div>
+          <button on:click={() => showLinkModal = false} class="text-slate-400 hover:text-white p-1 rounded-lg">
+            <X class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <label class="block text-xs uppercase tracking-[0.18em] text-slate-400">URL</label>
+          <input
+            class="w-full rounded-2xl glass-input px-4 py-3 text-slate-100 outline-none border border-white/10"
+            type="url"
+            bind:value={linkUrl}
+            placeholder="https://example.com"
+          />
+          <label class="block text-xs uppercase tracking-[0.18em] text-slate-400">Texte du lien</label>
+          <input
+            class="w-full rounded-2xl glass-input px-4 py-3 text-slate-100 outline-none border border-white/10"
+            type="text"
+            bind:value={linkText}
+            placeholder="Texte du lien"
+          />
+        </div>
+
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" on:click={() => showLinkModal = false} class="px-4 py-2 rounded-2xl bg-white/[0.05] text-slate-300 hover:text-white transition">
+            Annuler
+          </button>
+          <button type="button" on:click={insertLinkMarkdown} class="px-4 py-2 rounded-2xl btn-primary text-xs font-semibold text-white transition">
+            Insérer le lien
           </button>
         </div>
       </div>

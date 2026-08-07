@@ -158,6 +158,96 @@ body {
   overflow: hidden;
 }
 
+/* Markdown preview styling */
+.preview-content table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 1.25rem 0;
+  background: rgba(255,255,255,0.02);
+}
+
+.preview-content table th,
+.preview-content table td {
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  text-align: left;
+  vertical-align: top;
+}
+
+.preview-content table thead th {
+  background: rgba(255,255,255,0.06);
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.preview-content :where(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, dl, hr) {
+  max-inline-size: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.preview-content table,
+.preview-content pre {
+  max-inline-size: min(1100px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.preview-content table tbody tr:nth-child(odd) {
+  background: rgba(255,255,255,0.02);
+}
+
+.preview-content table tbody tr:nth-child(even) {
+  background: rgba(255,255,255,0.01);
+}
+
+.preview-content table th:first-child,
+.preview-content table td:first-child {
+  border-left: none;
+}
+
+.preview-content table th:last-child,
+.preview-content table td:last-child {
+  border-right: none;
+}
+
+.preview-content code,
+.preview-content pre {
+  font-family: ui-monospace, 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.preview-content pre {
+  margin: 1.25rem 0;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow-x: auto;
+}
+
+.preview-content code {
+  background: rgba(255,255,255,0.04);
+  padding: 0.18rem 0.35rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.preview-content blockquote {
+  border-left: 3px solid rgba(240,72,62,0.4);
+  padding: 0.85rem 1rem;
+  margin: 1.25rem 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+}
+
+.preview-content pre code {
+  background: transparent;
+  border: none;
+}
+
 .page-bg-surface {
   position: absolute;
   inset: 0;
