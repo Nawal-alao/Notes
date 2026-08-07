@@ -12,12 +12,19 @@ export async function fetchNotes() {
 }
 
 export async function fetchNoteById(id) {
-  const { data, error } = await supabase.from('notes').select('*').eq('id', id).maybeSingle();
-  if (error) {
-    if (error.code === 'PGRST116' || error.status === 406) return null;
+  if (!id) return null;
+
+  try {
+    const { data, error } = await supabase.from('notes').select('*').eq('id', id).maybeSingle();
+    if (error) {
+      if (error.code === 'PGRST116' || error.status === 406) return null;
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    if (error?.code === 'PGRST116' || error?.status === 406) return null;
     throw error;
   }
-  return data;
 }
 
 export async function upsertNote(note) {
@@ -106,14 +113,24 @@ export async function deleteNote(id) {
 
 let activeNotesChannel = null;
 
+function cleanupActiveNotesChannel() {
+  if (!activeNotesChannel) return;
+  try {
+    activeNotesChannel.unsubscribe();
+  } catch (e) {
+    console.warn('supabase unsubscribe failed', e);
+  }
+  try {
+    supabase.removeChannel(activeNotesChannel);
+  } catch (e) {
+    console.warn('supabase removeChannel failed', e);
+  }
+  activeNotesChannel = null;
+}
+
 export function subscribeToNotes(callback) {
   if (activeNotesChannel) {
-    try {
-      supabase.removeChannel(activeNotesChannel);
-    } catch (e) {
-      console.warn('removeChannel failed', e);
-    }
-    activeNotesChannel = null;
+    cleanupActiveNotesChannel();
   }
 
   const channel = supabase.channel('notes_changes');

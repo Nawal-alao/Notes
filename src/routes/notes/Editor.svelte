@@ -36,6 +36,18 @@
   let canSplit = false;
   let isZenMode = false;
 
+  let editorEl;
+  let savePulse = false;
+  let savePulseTimer;
+  let activeFormat = {
+    bold: false,
+    italic: false,
+    heading1: false,
+    heading2: false,
+    list: false,
+    code: false
+  };
+
   async function loadNote(id) {
     if (!id) return;
     const key = get(encryptionStore);
@@ -43,6 +55,15 @@
 
     try {
       const row = await fetchNoteById(id);
+      if (!row) {
+        currentNote = null;
+        debugRow = null;
+        title = '';
+        body = '';
+        status = 'Note introuvable';
+        notify({ message: 'Impossible de charger la note : note introuvable.', type: 'error' });
+        return;
+      }
       currentNote = row;
       debugRow = row;
       const debugInfo = {
@@ -138,12 +159,44 @@
       const saved = await upsertNote(payload);
       currentNote = saved;
       status = 'Enregistré';
+      animateSave();
       onSaved(saved);
     } catch (e) {
       status = 'Échec de sauvegarde';
     } finally {
       saving = false;
     }
+  }
+
+  function animateSave() {
+    savePulse = true;
+    clearTimeout(savePulseTimer);
+    savePulseTimer = setTimeout(() => {
+      savePulse = false;
+    }, 1000);
+  }
+
+  function isWrapped(start, end, marker) {
+    return body.slice(Math.max(0, start - marker.length), start) === marker
+      && body.slice(end, Math.min(body.length, end + marker.length)) === marker;
+  }
+
+  function linePrefixAt(cursor) {
+    const lineStart = Math.max(0, body.lastIndexOf('\n', cursor - 1) + 1);
+    return body.slice(lineStart, lineStart + 3);
+  }
+
+  function updateActiveFormat() {
+    const start = editorEl?.selectionStart ?? 0;
+    const end = editorEl?.selectionEnd ?? start;
+    const prefix = linePrefixAt(start);
+
+    activeFormat.bold = isWrapped(start, end, '**');
+    activeFormat.italic = isWrapped(start, end, '*');
+    activeFormat.code = isWrapped(start, end, '`');
+    activeFormat.heading1 = prefix === '# ';
+    activeFormat.heading2 = prefix === '## ';
+    activeFormat.list = prefix === '- ';
   }
 
   const save = debounce(() => { doSave(); }, 600);
@@ -239,7 +292,7 @@
   <div class="space-y-4 mb-4 pb-4 border-b border-white/10">
     <div class="flex items-center justify-between gap-4">
       <input
-        class="w-full text-2xl md:text-3xl font-extrabold bg-transparent border-0 outline-none text-white placeholder-slate-600 tracking-tight"
+        class="w-full text-2xl md:text-3xl font-serif font-extrabold bg-transparent border-0 outline-none text-white placeholder-slate-600 tracking-tight"
         bind:value={title}
         placeholder="Titre de la note…"
         on:input={() => save()}
@@ -292,38 +345,38 @@
     </div>
 
     <!-- Formatting Toolbar & Status -->
-    <div class="flex items-center justify-between gap-3 text-xs flex-wrap">
+    <div class="flex items-center justify-between gap-3 text-xs flex-wrap font-mono text-slate-400">
       <div class="flex items-center gap-1.5 flex-wrap bg-white/[0.03] p-1.5 rounded-md border border-white/5">
-        <button on:click={() => applyFormat({ start: '**', end: '**' })} class="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Gras (**texte**)">
+        <button on:click={() => { applyFormat({ start: '**', end: '**' }); updateActiveFormat(); }} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition {activeFormat.bold ? 'active' : ''}" title="Gras (**texte**)">
           <Bold class="w-3.5 h-3.5" />
         </button>
-        <button on:click={() => applyFormat({ start: '*', end: '*' })} class="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Italique (*texte*)">
+        <button on:click={() => { applyFormat({ start: '*', end: '*' }); updateActiveFormat(); }} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition {activeFormat.italic ? 'active' : ''}" title="Italique (*texte*)">
           <Italic class="w-3.5 h-3.5" />
         </button>
         <div class="w-px h-4 bg-white/10 mx-1"></div>
-        <button on:click={() => applyFormat({ start: '# ', end: '' })} class="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Titre 1">
+        <button on:click={() => { applyFormat({ start: '# ', end: '' }); updateActiveFormat(); }} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition {activeFormat.heading1 ? 'active' : ''}" title="Titre 1">
           <Heading1 class="w-3.5 h-3.5" />
         </button>
-        <button on:click={() => applyFormat({ start: '## ', end: '' })} class="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Titre 2">
+        <button on:click={() => { applyFormat({ start: '## ', end: '' }); updateActiveFormat(); }} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition {activeFormat.heading2 ? 'active' : ''}" title="Titre 2">
           <Heading2 class="w-3.5 h-3.5" />
         </button>
         <div class="w-px h-4 bg-white/10 mx-1"></div>
-        <button on:click={() => applyFormat({ start: '- ', end: '' })} class="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Liste à puces">
+        <button on:click={() => { applyFormat({ start: '- ', end: '' }); updateActiveFormat(); }} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition {activeFormat.list ? 'active' : ''}" title="Liste à puces">
           <List class="w-3.5 h-3.5" />
         </button>
-        <button on:click={() => applyFormat({ start: '`', end: '`' })} class="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition" title="Code en ligne">
+        <button on:click={() => { applyFormat({ start: '`', end: '`' }); updateActiveFormat(); }} class="toolbar-button p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition {activeFormat.code ? 'active' : ''}" title="Code en ligne">
           <Code class="w-3.5 h-3.5" />
         </button>
       </div>
 
       <!-- Action Buttons (Export, History, Save Indicator) -->
       <div class="flex items-center gap-2">
-        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/5 text-slate-400">
-        {#if saving}
+        <div class="save-indicator px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/5 text-slate-400">
+          {#if saving}
             <Loader2 class="w-3 h-3 text-accent animate-spin" />
             <span class="text-[11px] text-accent">Sauvegarde…</span>
           {:else}
-            <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+            <div class="save-badge {savePulse ? 'pulse' : ''}"></div>
             <span class="text-[11px] text-slate-300">{status}</span>
           {/if}
         </div>
@@ -355,10 +408,13 @@
     {#if viewMode === 'write' || (viewMode === 'split' && canSplit)}
       <textarea
         id="main-editor"
+        bind:this={editorEl}
         bind:value={body}
-        class="w-full h-full p-4 rounded-md glass-input text-slate-100 placeholder-slate-600 font-mono text-sm leading-relaxed resize-none outline-none border border-white/10 transition overflow-y-auto"
+        class="w-full h-full p-4 rounded-md glass-input text-slate-100 placeholder-slate-600 font-sans text-sm leading-relaxed resize-none outline-none border border-white/10 transition overflow-y-auto"
         placeholder="Commencez à rédiger votre note chiffrée ici (support Markdown)…"
-        on:input={() => save()}
+        on:input={() => { save(); updateActiveFormat(); }}
+        on:keyup={updateActiveFormat}
+        on:mouseup={updateActiveFormat}
       ></textarea>
     {/if}
 

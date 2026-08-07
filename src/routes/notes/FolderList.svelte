@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { fly, fade, scale } from 'svelte/transition';
-  import { Folder, FolderOpen, Tag, Pencil, Trash2, Layers, Inbox, Plus, X, Check } from 'lucide-svelte';
+  import { Folder, Tag, Pencil, Trash2, Layers, Inbox, Plus, X, Check, ChevronsLeft, ChevronsRight } from 'lucide-svelte';
   import ConfirmDialog from '$lib/ConfirmDialog.svelte';
 
   const dispatch = createEventDispatcher();
@@ -11,6 +11,14 @@
   export let notesPanelOpen = true;
   let dragOverId = null;
   let railHovered = false;
+  let railPopoutEl;
+
+  function handleRailMouseLeave() {
+    railHovered = false;
+    if (railPopoutEl?.contains(document.activeElement)) {
+      document.activeElement.blur?.();
+    }
+  }
 
   // Modal State for Create / Rename
   let isModalOpen = false;
@@ -40,37 +48,43 @@
 
 </script>
 
-<aside class="app-sidebar flex-shrink-0 relative" on:mouseenter={() => railHovered = true} on:mouseleave={() => railHovered = false}>
+<aside class="app-sidebar flex-shrink-0 relative" on:mouseenter={() => railHovered = true} on:mouseleave={handleRailMouseLeave}>
   <!-- Collapsed rail (icons only) -- visible by default -->
   <div class="rail-collapsed flex flex-col items-center py-3 gap-3">
     <div class="w-10 h-10 flex items-center justify-center rounded-md">
       <Folder class="w-5 h-5 text-slate-300" />
     </div>
-    <div class="flex flex-col items-center w-full space-y-1 overflow-hidden">
-      {#each folders as f (f.id)}
-        {@const IconComponent = getFolderIcon(f.id)}
-        <div class="relative w-full flex items-center justify-center p-1">
-          <button on:click={() => select(f.id)} class="p-2 rounded-md text-slate-400 hover:text-white transition" title={f.name}>
-            <svelte:component this={IconComponent} class="w-5 h-5" />
-          </button>
-          <span class="badge-collapsed">{f.count}</span>
-        </div>
-      {/each}
-    </div>
-    <div class="mt-auto pb-2 flex flex-col items-center gap-2">
-      <button on:click={toggleNotesPanel} class="p-2 rounded-md text-slate-400 hover:text-white transition" title={notesPanelOpen ? 'Masquer le panneau notes (Ctrl+,)' : 'Afficher le panneau notes (Ctrl+,)'}>
-        {#if notesPanelOpen}
-          <FolderOpen class="w-5 h-5" />
-        {:else}
-          <Folder class="w-5 h-5" />
-        {/if}
-      </button>
-      <button on:click={openCreateModal} class="p-2 rounded-md text-slate-400 hover:text-white transition" title="Créer un tag"><Plus class="w-5 h-5" /></button>
-    </div>
+      <div class="rail-icons flex flex-col items-center w-full space-y-1 overflow-hidden">
+        {#each folders as f (f.id)}
+          {@const IconComponent = getFolderIcon(f.id)}
+          <div class="relative w-full flex items-center justify-center p-1">
+            <button on:click={() => select(f.id)} class="p-2 rounded-md text-slate-400 hover:text-white transition" title={f.name}>
+              <svelte:component this={IconComponent} class="w-5 h-5" />
+            </button>
+            <span class="badge-collapsed">{f.count}</span>
+          </div>
+        {/each}
+      </div>
+      <div class="rail-actions mt-auto pb-2 flex flex-col items-center gap-2">
+        <button
+          on:click={toggleNotesPanel}
+          class="toggle-notes-panel p-2 rounded-md transition text-slate-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-accent/50 {notesPanelOpen ? 'bg-white/5 text-white' : 'bg-transparent'}"
+          aria-pressed={notesPanelOpen}
+          aria-label={notesPanelOpen ? 'Masquer le panneau notes' : 'Afficher le panneau notes'}
+          title={notesPanelOpen ? 'Masquer le panneau notes (Ctrl+,)' : 'Afficher le panneau notes (Ctrl+,)'}
+        >
+          {#if notesPanelOpen}
+            <ChevronsLeft class="w-5 h-5" />
+          {:else}
+            <ChevronsRight class="w-5 h-5" />
+          {/if}
+        </button>
+        <button on:click={openCreateModal} class="p-2 rounded-md text-slate-400 hover:text-white transition" title="Créer un tag"><Plus class="w-5 h-5" /></button>
+      </div>
   </div>
 
   <!-- Expanded popout (overlay on hover) -->
-  <div class="rail-popout" aria-hidden={!railHovered} inert={!railHovered}>
+  <div class="rail-popout" bind:this={railPopoutEl} inert={!railHovered}>
     <div class="flex items-center gap-3 mb-4">
       <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
         <Folder class="w-4 h-4 text-slate-300" />
@@ -142,11 +156,14 @@
 
 <style>
   .app-sidebar { width: 64px; flex: 0 0 64px; position: relative; }
-  .rail-collapsed { width: 64px; height: 100%; }
-  .rail-popout { position: absolute; left: 0; top: 0; width: 240px; height: 100%; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.45); opacity: 0; pointer-events: none; transform: translateX(-8px); transition: opacity 220ms cubic-bezier(0.4,0,0.2,1), transform 220ms cubic-bezier(0.4,0,0.2,1); z-index: 30; }
+  .rail-collapsed { position: relative; width: 64px; height: 100%; }
+  .rail-popout { position: absolute; left: 0; top: 0; width: 240px; height: 100%; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.45); opacity: 0; pointer-events: none; transform: translateX(-64px); transition: opacity 220ms cubic-bezier(0.4,0,0.2,1), transform 220ms cubic-bezier(0.4,0,0.2,1); z-index: 40; }
   .app-sidebar:hover .rail-popout { opacity: 1; pointer-events: auto; transform: translateX(0); }
   .app-sidebar:hover .rail-popout[inert] { pointer-events: auto; }
+  .app-sidebar:hover .rail-icons { opacity: 0; pointer-events: none; }
+  .rail-icons { transition: opacity 220ms ease; }
   .badge-collapsed { position: absolute; right: 8px; top: 6px; background: rgba(255,255,255,0.04); color: var(--text); font-size: 10px; padding: 2px 6px; border-radius: 999px; }
+  .toggle-notes-panel { position: relative; z-index: 50; }
   /* ensure popout scrolls independently */
   .rail-popout nav { max-height: calc(100vh - 140px); overflow-y: auto; }
 </style>

@@ -3,6 +3,7 @@
   import FolderList from './FolderList.svelte';
   import NoteCard from './NoteCard.svelte';
   import Editor from './Editor.svelte';
+  import CreateNoteButton from '$lib/CreateNoteButton.svelte';
   import { fetchNotes, makeEncryptedPayload, decryptPayload, upsertNote, deleteNote, subscribeToNotes } from '$lib/notes';
   import { encryptionStore } from '$lib/stores/encryption';
   import { notify } from '$lib/stores/toast';
@@ -13,7 +14,7 @@
   import { spring } from 'svelte/motion';
   import { supabase } from '$lib/supabase';
   import {
-    Plus, Search, Lock, ShieldCheck, FileText, Sparkles, X, 
+    Search, Lock, ShieldCheck, FileText, Sparkles, X, 
     LogOut, FolderOpen, AlertCircle, KeyRound, ChevronsLeft, ChevronsRight
   } from 'lucide-svelte';
 
@@ -294,8 +295,9 @@
   <title>Private Notes · Workspace Chiffré</title>
 </svelte:head>
 
-<div class="flex flex-col h-screen overflow-hidden p-4 md:p-6 gap-4">
-  
+<div class="relative flex flex-col h-screen overflow-hidden p-4 md:p-6 gap-4 page-shell">
+  <div class="pointer-events-none absolute inset-0 page-bg-surface"></div>
+
   <!-- Top Navigation Header -->
   <header class="flex items-center justify-between px-6 py-3.5 glass-panel rounded-lg border border-white/10 shadow-2xl flex-shrink-0">
     <div class="flex items-center gap-3">
@@ -328,14 +330,7 @@
         {/if}
       </div>
 
-      <button
-        class="rounded-md btn-primary px-4 py-2.5 text-xs font-semibold text-white transition flex items-center gap-2"
-        on:click={bounceCreate}
-        style="transform: scale({$btnScale});"
-      >
-        <Plus class="w-4 h-4" />
-        <span>Nouvelle note</span>
-      </button>
+      <CreateNoteButton on:click={bounceCreate} style="transform: scale({$btnScale});" />
 
       <button
         on:click={handleLockVault}
@@ -397,20 +392,16 @@
                 </div>
               {/each}
             {:else}
-                <div class="h-full flex flex-col items-center justify-center text-center p-4 text-slate-500 space-y-3">
-                <FolderOpen class="w-10 h-10 stroke-1 text-slate-600" />
-                <div class="space-y-1">
-                  <p class="text-sm font-semibold text-slate-400">Aucune note trouvée</p>
-                  <p class="text-xs text-slate-500">Créez votre première note chiffrée pour commencer.</p>
+                <div class="h-full flex flex-col items-center justify-center text-center p-4 text-slate-500 space-y-3 empty-state-card">
+                  <div class="empty-illustration">
+                    <FolderOpen class="w-10 h-10 stroke-1 text-slate-500 icon-muted" />
+                  </div>
+                  <div class="space-y-1">
+                    <p class="text-sm font-semibold text-slate-400">Aucune note trouvée</p>
+                    <p class="text-xs text-slate-500">Créez votre première note chiffrée pour commencer.</p>
+                  </div>
+                  <CreateNoteButton on:click={bounceCreate} className="px-3 py-2 text-xs font-semibold" />
                 </div>
-                <button
-                  on:click={bounceCreate}
-                  class="px-3 py-2 rounded-md btn-primary text-xs font-semibold text-white flex items-center gap-1.5"
-                >
-                  <Plus class="w-3.5 h-3.5" />
-                  <span>Créer une note</span>
-                </button>
-              </div>
             {/if}
           </div>
       </section>
@@ -427,9 +418,9 @@
               </div>
             {/key}
           {:else}
-            <div class="h-full glass-panel rounded-lg p-8 border border-white/10 shadow-2xl flex flex-col items-center justify-center text-center space-y-4">
-              <div class="w-16 h-16 rounded-md bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-slate-300">
-                <Sparkles class="w-8 h-8 icon-muted" />
+            <div class="h-full glass-panel rounded-lg p-8 border border-white/10 shadow-2xl flex flex-col items-center justify-center text-center space-y-4 empty-state-card">
+              <div class="empty-illustration">
+                <Sparkles class="w-8 h-8 text-slate-200 icon-muted" />
               </div>
               <div class="max-w-sm space-y-2">
                 <h3 class="text-xl font-bold text-white">Aucune note sélectionnée</h3>
@@ -437,13 +428,7 @@
                   Sélectionnez une note dans la liste pour l'éditer, ou créez un nouveau document chiffré en un clic.
                 </p>
               </div>
-              <button
-                on:click={bounceCreate}
-                class="px-6 py-3 rounded-md btn-primary text-xs font-bold text-white transition flex items-center gap-2"
-              >
-                <Plus class="w-4 h-4" />
-                <span>Nouvelle note chiffrée</span>
-              </button>
+              <CreateNoteButton on:click={bounceCreate} className="px-6 py-3 text-xs font-bold" />
             </div>
           {/if}
         </div>
