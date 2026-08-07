@@ -69,6 +69,8 @@
     <div class="flex items-center gap-2 min-w-0">
       <FileText class="w-4 h-4 flex-shrink-0 {isSelected ? 'text-accent' : 'icon-muted group-hover:text-slate-200'}" />
       <h4 class="text-sm font-serif font-semibold truncate text-slate-100 group-hover:text-white">
+        {note.titlePreview || 'Sans titre'}
+      </h4>
     </div>
 
     <div class="flex items-center gap-1 text-[11px] text-slate-400 flex-shrink-0">
