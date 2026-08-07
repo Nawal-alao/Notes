@@ -483,7 +483,7 @@
   .editor-textarea:focus {
     outline: none;
     border-color: transparent;
-    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08), 0 4px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1), 0 4px 20px rgba(0, 0, 0, 0.5);
   }
 </style>
 
