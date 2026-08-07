@@ -196,6 +196,7 @@
   }
 
   async function createNote() {
+    console.log('clic détecté');
     const key = get(encryptionStore);
     if (!key) return goto('unlock');
     const titleEnc = await makeEncryptedPayload(key, '');

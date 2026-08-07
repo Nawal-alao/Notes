@@ -181,10 +181,10 @@ const options = {
   service_worker_options: void 0,
   server_error_boundaries: false,
   templates: {
-    app: ({ head, body, assets, nonce, env }) => '<!doctype html>\n<html lang="fr" class="dark">\n  <head>\n    <meta charset="utf-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1" />\n    <link rel="preconnect" href="https://fonts.googleapis.com">\n    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">\n    ' + head + '\n  </head>\n  <body data-sveltekit-preload-data="hover" class="bg-[#090d16] text-slate-100 antialiased font-sans selection:bg-cyan-500/30 selection:text-cyan-200">\n    <div style="display: contents">' + body + "</div>\n  </body>\n</html>\n",
+    app: ({ head, body, assets, nonce, env }) => '<!doctype html>\n<html lang="fr" class="dark">\n  <head>\n    <meta charset="utf-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1" />\n    <link rel="preconnect" href="https://fonts.googleapis.com">\n    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">\n    ' + head + '\n  </head>\n  <body data-sveltekit-preload-data="hover" class="bg-[#090d16] text-slate-100 antialiased font-sans selection:bg-[rgba(240,72,62,0.18)] selection:text-white">\n    <div style="display: contents">' + body + "</div>\n  </body>\n</html>\n",
     error
   },
-  version_hash: "18jd6e2"
+  version_hash: "6jb48n"
 };
 async function get_hooks() {
   let handle;

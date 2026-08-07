@@ -55,9 +55,9 @@
     "file": "chunks/server.js",
     "name": "server"
   },
-  "_sparkles.js": {
-    "file": "chunks/sparkles.js",
-    "name": "sparkles",
+  "_shield-check.js": {
+    "file": "chunks/shield-check.js",
+    "name": "shield-check",
     "imports": [
       "_ssr.js",
       "_Icon.js"
@@ -154,7 +154,7 @@
       "_Icon.js"
     ],
     "css": [
-      "_app/immutable/assets/_layout.CgTzRU2y.css"
+      "_app/immutable/assets/_layout.BgsM_KGF.css"
     ]
   },
   "src/routes/+page.svelte": {
@@ -180,7 +180,7 @@
       "_utils2.js",
       "_state.svelte.js",
       "_supabase.js",
-      "_sparkles.js",
+      "_shield-check.js",
       "_Icon.js",
       "_eye.js"
     ]
@@ -200,7 +200,10 @@
       "_utils2.js",
       "_state.svelte.js",
       "_index.js",
-      "_sparkles.js"
+      "_shield-check.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_page.Q2gsqVYz.css"
     ]
   },
   "src/routes/unlock/+page.svelte": {

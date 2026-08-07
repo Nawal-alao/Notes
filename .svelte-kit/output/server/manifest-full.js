@@ -6,11 +6,11 @@ function __memo(fn) {
 
 return {
 	appDir: "_app",
-	appPath: "_app",
+	appPath: "Notes/_app",
 	assets: new Set([]),
 	mimeTypes: {},
 	_: {
-		client: {start:"_app/immutable/entry/start.oOZiiThe.js",app:"_app/immutable/entry/app.D5u2GCxU.js",imports:["_app/immutable/entry/start.oOZiiThe.js","_app/immutable/chunks/BAp6MMvY.js","_app/immutable/chunks/DSGxBBWs.js","_app/immutable/entry/app.D5u2GCxU.js","_app/immutable/chunks/BAp6MMvY.js","_app/immutable/chunks/DSGxBBWs.js","_app/immutable/chunks/CAa3UhLx.js","_app/immutable/chunks/j1NiyXin.js","_app/immutable/chunks/CQGF_JyJ.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
+		client: null,
 		nodes: [
 			__memo(() => import('./nodes/0.js')),
 			__memo(() => import('./nodes/1.js')),
