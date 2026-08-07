@@ -1,4 +1,5 @@
 import { goto } from '$app/navigation';
+import { base } from '$app/paths';
 import { supabase } from '$lib/supabase';
 import { encryptionStore } from '$lib/stores/encryption';
 
@@ -20,6 +21,7 @@ export async function init() {
 
   const { data } = await supabase.auth.getSession();
   const session = data.session;
+  console.log('BASE:', base);
   const hasKey = await getCurrentKey();
   const pathname = window.location.pathname;
 
