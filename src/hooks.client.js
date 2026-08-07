@@ -23,12 +23,12 @@ export async function init() {
   const hasKey = await getCurrentKey();
   const pathname = window.location.pathname;
 
-  if (!session && pathname !== '/login') {
-    goto('/login');
+  if (!session && !pathname.endsWith('/login')) {
+    goto('login');
     return;
   }
 
-  if (session && !hasKey && pathname !== '/unlock' && pathname !== '/login') {
-    goto('/unlock');
+  if (session && !hasKey && !pathname.endsWith('/unlock') && !pathname.endsWith('/login')) {
+    goto('unlock');
   }
 }

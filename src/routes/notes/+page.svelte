@@ -38,7 +38,7 @@
   async function load() {
     const session = await fetchNotes();
     const key = get(encryptionStore);
-    if (!key) return goto('/unlock');
+    if (!key) return goto('unlock');
 
     // Decrypt titles and previews for list display
     notes = await Promise.all((session || []).map(async (n) => {
@@ -88,7 +88,7 @@
 
   onMount(async () => {
     const key = get(encryptionStore);
-    if (!key) return goto('/unlock');
+    if (!key) return goto('unlock');
     await load();
 
     const unsubscribe = subscribeToNotes((payload) => {
@@ -192,12 +192,12 @@
 
   async function handleLockVault() {
     encryptionStore.set(null);
-    goto('/unlock');
+    goto('unlock');
   }
 
   async function createNote() {
     const key = get(encryptionStore);
-    if (!key) return goto('/unlock');
+    if (!key) return goto('unlock');
     const titleEnc = await makeEncryptedPayload(key, '');
     const contentEnc = await makeEncryptedPayload(key, '');
     
@@ -256,7 +256,7 @@
     const n = notes.find(x => x.id === id);
     if (!n) return;
     const key = get(encryptionStore);
-    if (!key) return goto('/unlock');
+    if (!key) return goto('unlock');
     try {
       const title = await decryptPayload(key, n.title, n.title_iv || n.content_iv);
       const body = await decryptPayload(key, n.encrypted_content, n.content_iv || n.title_iv);

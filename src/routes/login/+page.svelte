@@ -23,7 +23,7 @@
       return;
     }
 
-    goto('/unlock');
+    goto('unlock');
   }
 
   async function handleSignUp() {
@@ -44,7 +44,7 @@
       return;
     }
 
-    goto('/unlock');
+    goto('unlock');
   }
 </script>
 

@@ -51,7 +51,7 @@
   async function loadNote(id) {
     if (!id) return;
     const key = get(encryptionStore);
-    if (!key) return goto('/unlock');
+    if (!key) return goto('unlock');
 
     try {
       const row = await fetchNoteById(id);
@@ -123,7 +123,7 @@
 
   async function doSave() {
     const key = get(encryptionStore);
-    if (!key) return goto('/unlock');
+    if (!key) return goto('unlock');
     saving = true; 
     status = 'Enregistrement…';
 
@@ -245,7 +245,7 @@
 
   async function handleRestore(e) {
     const key = get(encryptionStore);
-    if (!key) return goto('/unlock');
+    if (!key) return goto('unlock');
     const item = e.detail;
     try {
       const decrypted = await decryptPayload(key, item.encrypted_content, item.content_iv);
@@ -259,7 +259,7 @@
 
   async function handlePreview(e) {
     const key = get(encryptionStore);
-    if (!key) return goto('/unlock');
+    if (!key) return goto('unlock');
     try {
       const item = e.detail;
       previewContent = await decryptPayload(key, item.encrypted_content, item.content_iv);

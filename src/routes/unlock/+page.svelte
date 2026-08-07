@@ -13,13 +13,13 @@
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
     if (!data.session) {
-      goto('/login');
+      goto('login');
     }
   });
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    goto('/login');
+    goto('login');
   }
 
   async function handleSubmit() {
@@ -83,7 +83,7 @@
 
     encryptionStore.set(key);
     try {
-      await goto('/notes');
+      await goto('notes');
     } catch (navigationError) {
       console.error('Navigation failed', navigationError);
     } finally {
