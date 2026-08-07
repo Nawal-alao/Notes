@@ -410,7 +410,7 @@
         id="main-editor"
         bind:this={editorEl}
         bind:value={body}
-        class="w-full h-full p-4 rounded-md glass-input text-slate-100 placeholder-slate-600 font-sans text-sm leading-relaxed resize-none outline-none border border-white/10 transition overflow-y-auto"
+        class="editor-textarea w-full h-full p-4 rounded-md glass-input text-slate-100 placeholder-slate-600 font-sans text-sm leading-relaxed resize-none outline-none border border-white/10 transition overflow-y-auto"
         placeholder="Commencez à rédiger votre note chiffrée ici (support Markdown)…"
         on:input={() => { save(); updateActiveFormat(); }}
         on:keyup={updateActiveFormat}
@@ -478,4 +478,12 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .editor-textarea:focus {
+    outline: none;
+    border-color: transparent;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08), 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+</style>
 

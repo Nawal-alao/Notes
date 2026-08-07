@@ -34,6 +34,7 @@
   let search = '';
   let searchInputEl;
   let notesPanelOpen = true;
+  let createdTags = new Set();
 
   async function load() {
     const session = await fetchNotes();
@@ -83,6 +84,13 @@
         map.get(t).count += 1;
       });
     });
+
+    createdTags.forEach((tag) => {
+      if (!map.has(tag)) {
+        map.set(tag, { id: tag, name: tag, count: 0, description: '' });
+      }
+    });
+
     folders = Array.from(map.values());
   }
 
@@ -233,8 +241,10 @@
   }
 
   async function handleCreateTag(name) {
-    // Creating a tag conceptually happens when notes are tagged, but we can switch view to it
+    if (!name || name === 'all' || name === 'uncat') return;
+    createdTags.add(name);
     selectedFolder = name;
+    buildFolders();
   }
 
   async function onDropEvent(e) {
