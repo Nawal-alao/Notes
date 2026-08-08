@@ -304,7 +304,10 @@
         console.error('Échec rendu Markdown (marked.parse)', err, { sample: typeof content === 'string' ? content.slice(0, 800) : null });
       }
     }
-    return simpleMarkdown(content);
+    const simple = simpleMarkdown(content);
+    try { window.__editorLogs = window.__editorLogs || []; window.__editorLogs.push({ evt: 'renderMarkdown-simple', len: typeof simple === 'string' ? simple.length : null, sample: typeof simple === 'string' ? simple.slice(0,800) : null }); } catch (e) {}
+    try { console.log('renderMarkdown: fallback simpleMarkdown output', simple); } catch (e) {}
+    return simple;
   }
 
   const updatePreview = debounce(async () => {
