@@ -306,6 +306,11 @@
 
   const updatePreview = debounce(async () => {
     previewHtml = await renderMarkdown(body);
+    try {
+      window.__editorLogs = window.__editorLogs || [];
+      window.__editorLogs.push({ evt: 'updatePreview-assigned', valueSample: typeof previewHtml === 'string' ? previewHtml.slice(0,800) : null, len: typeof previewHtml === 'string' ? previewHtml.length : null });
+    } catch (e) {}
+    try { console.log('updatePreview: previewHtml len', typeof previewHtml === 'string' ? previewHtml.length : null); } catch (e) {}
   }, 200);
 
   function insertAtCursor(text, cursorOffset = 0) {
@@ -393,6 +398,12 @@
 
   $: if (viewMode === 'preview' || (viewMode === 'split' && canSplit)) updatePreview();
   $: if (body && (viewMode === 'preview' || (viewMode === 'split' && canSplit))) updatePreview();
+
+  // Log whenever previewHtml changes so we can trace unexpected resets
+  $: if (typeof previewHtml !== 'undefined') {
+    try { window.__editorLogs = window.__editorLogs || []; window.__editorLogs.push({ evt: 'previewHtml-changed', sample: typeof previewHtml === 'string' ? previewHtml.slice(0,800) : null, len: typeof previewHtml === 'string' ? previewHtml.length : null }); } catch (e) {}
+    try { console.log('previewHtml-changed len', typeof previewHtml === 'string' ? previewHtml.length : null); } catch (e) {}
+  }
 
   $: if (noteId) loadNote(noteId);
 
