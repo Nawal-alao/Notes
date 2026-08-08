@@ -80,6 +80,8 @@
   function stripMarkdownSyntax(text) {
     if (!text) return '';
     let result = String(text);
+    // If HTML was accidentally passed in (from other parts of the app), strip tags first
+    result = result.replace(/<[^>]*>/g, ' ');
     result = result.replace(/```[\s\S]*?```/g, ' ');
     result = result.replace(/`([^`]+)`/g, '$1');
     result = result.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1');
