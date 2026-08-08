@@ -279,6 +279,8 @@
 
   async function renderMarkdown(content) {
     if (!content) {
+      try { window.__editorLogs = window.__editorLogs || []; window.__editorLogs.push({ evt: 'guard-empty-content' }); } catch (e) {}
+      console.log('renderMarkdown: guard-empty-content');
       return '<span class="text-slate-600 italic">Aucun contenu à prévisualiser…</span>';
     }
 
@@ -293,6 +295,8 @@
     }
 
     await loadMarkdownLibs();
+    try { window.__editorLogs = window.__editorLogs || []; window.__editorLogs.push({ evt: 'after-loadMarkdownLibs', marked: !!marked }); } catch (e) {}
+    console.log('renderMarkdown: marked present?', !!marked);
     if (marked) {
       try {
         const html = marked.parse(content);
@@ -304,6 +308,7 @@
         console.error('Échec rendu Markdown (marked.parse)', err, { sample: typeof content === 'string' ? content.slice(0, 800) : null });
       }
     }
+    try { window.__editorLogs = window.__editorLogs || []; window.__editorLogs.push({ evt: 'before-simpleMarkdown' }); } catch (e) {}
     const simple = simpleMarkdown(content);
     try { window.__editorLogs = window.__editorLogs || []; window.__editorLogs.push({ evt: 'renderMarkdown-simple', len: typeof simple === 'string' ? simple.length : null, sample: typeof simple === 'string' ? simple.slice(0,800) : null }); } catch (e) {}
     try { console.log('renderMarkdown: fallback simpleMarkdown output', simple); } catch (e) {}
