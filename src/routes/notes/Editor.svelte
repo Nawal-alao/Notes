@@ -281,12 +281,21 @@
     if (!content) {
       return '<span class="text-slate-600 italic">Aucun contenu à prévisualiser…</span>';
     }
+
+    // Log raw content passed to the renderer for debugging timing/decrypt issues
+    try {
+      console.log('renderMarkdown: content length', typeof content === 'string' ? content.length : null);
+      if (typeof content === 'string' && content.length < 1000) console.log('renderMarkdown: content preview', content.slice(0, 400));
+    } catch (e) {
+      console.warn('renderMarkdown: failed to log content', e);
+    }
+
     await loadMarkdownLibs();
     if (marked) {
       try {
         return marked.parse(content);
       } catch (err) {
-        console.error('Échec rendu Markdown', err);
+        console.error('Échec rendu Markdown (marked.parse)', err, { sample: typeof content === 'string' ? content.slice(0, 800) : null });
       }
     }
     return simpleMarkdown(content);
