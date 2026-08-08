@@ -5,6 +5,7 @@
   import { encryptionStore } from '$lib/stores/encryption';
   import { notify } from '$lib/stores/toast';
   import { makeEncryptedPayload, decryptPayload, upsertNote, fetchNoteById } from '$lib/notes';
+  import { loadMarkdownLibs } from '$lib/markdown';
   import HistoryPanel from './HistoryPanel.svelte';
   import { goto } from '$app/navigation';
   import {
@@ -56,29 +57,6 @@
   let linkSelectionStart = 0;
   let linkSelectionEnd = 0;
   let previewHtml = '<span class="text-slate-600 italic">Aucun contenu à prévisualiser…</span>';
-  let marked = null;
-  let hljs = null;
-  let markdownReady = false;
-
-  function loadExternalScript(src) {
-    return new Promise((resolve, reject) => {
-      const existing = document.querySelector(`script[src="${src}"]`);
-      if (existing) {
-        existing.addEventListener('load', () => resolve(existing));
-        existing.addEventListener('error', () => reject(new Error(`Failed to load script: ${src}`)));
-        if (existing.readyState === 'complete' || existing.readyState === 'loaded') {
-          resolve(existing);
-        }
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = src;
-      script.async = true;
-      script.onload = () => resolve(script);
-      script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-      document.head.appendChild(script);
-    });
-  }
 
   async function loadNote(id) {
     if (!id) return;
@@ -215,53 +193,12 @@
 
   const save = debounce(() => { doSave(); }, 600);
 
-  async function loadMarkdownLibs() {
-    if (markdownReady) return;
-    try {
-      const markedModule = await import('https://cdn.jsdelivr.net/npm/marked@8.0.0/lib/marked.esm.js');
-      marked = markedModule.marked || markedModule.default || markedModule;
-
-      await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js');
-      hljs = window.hljs;
-      if (!hljs) {
-        throw new Error('highlight.js failed to initialize');
-      }
-
-      marked.setOptions({
-        gfm: true,
-        breaks: false,
-        headerIds: false,
-        mangle: false,
-        highlight: (code, lang) => {
-          try {
-            if (lang && hljs.getLanguage?.(lang)) {
-              return hljs.highlight(code, { language: lang }).value;
-            }
-            return hljs.highlightAuto?.(code).value || escapeHtml(code);
-          } catch (e) {
-            return escapeHtml(code);
-          }
-        }
-      });
-      markdownReady = true;
-    } catch (err) {
-      console.error('Chargement Markdown échoué', err);
-    }
-  }
-
-  function escapeHtml(str) {
-    return String(str || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-  }
-
   async function renderMarkdown(content) {
     if (!content) {
       return '<span class="text-slate-600 italic">Aucun contenu à prévisualiser…</span>';
     }
 
-    await loadMarkdownLibs();
+    const { marked } = await loadMarkdownLibs();
     if (marked) {
       try {
         return marked.parse(content);
