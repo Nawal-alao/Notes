@@ -284,6 +284,8 @@
 
     // Log raw content passed to the renderer for debugging timing/decrypt issues
     try {
+      // also capture in a window-level array for the test harness to read
+      try { window.__editorLogs = window.__editorLogs || []; window.__editorLogs.push({evt: 'renderMarkdown-enter', length: typeof content === 'string' ? content.length : null, sample: typeof content === 'string' && content.length < 1000 ? content.slice(0,400) : null}); } catch(e){}
       console.log('renderMarkdown: content length', typeof content === 'string' ? content.length : null);
       if (typeof content === 'string' && content.length < 1000) console.log('renderMarkdown: content preview', content.slice(0, 400));
     } catch (e) {
@@ -295,6 +297,7 @@
       try {
         return marked.parse(content);
       } catch (err) {
+        try { window.__editorLogs = window.__editorLogs || []; window.__editorLogs.push({evt: 'renderMarkdown-marked-err', err: String(err), sample: typeof content === 'string' ? content.slice(0,800) : null}); } catch(e){}
         console.error('Échec rendu Markdown (marked.parse)', err, { sample: typeof content === 'string' ? content.slice(0, 800) : null });
       }
     }
