@@ -412,6 +412,12 @@
     try { console.log('previewHtml-changed len', typeof previewHtml === 'string' ? previewHtml.length : null); } catch (e) {}
   }
 
+  // Log when we're about to render preview (viewMode === 'preview')
+  $: if (viewMode === 'preview') {
+    try { window.__editorLogs = window.__editorLogs || []; window.__editorLogs.push({ evt: 'about-to-render-preview', previewLen: typeof previewHtml === 'string' ? previewHtml.length : null, previewSample: typeof previewHtml === 'string' ? previewHtml.slice(0,800) : null }); } catch (e) {}
+    try { console.log('about-to-render-preview previewHtml len', typeof previewHtml === 'string' ? previewHtml.length : null); } catch (e) {}
+  }
+
   $: if (noteId) loadNote(noteId);
 
   onMount(() => {
