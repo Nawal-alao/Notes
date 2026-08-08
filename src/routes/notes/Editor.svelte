@@ -56,7 +56,6 @@
   let linkSelectionStart = 0;
   let linkSelectionEnd = 0;
   let previewHtml = '<span class="text-slate-600 italic">Aucun contenu à prévisualiser…</span>';
-  let previewRequestId = 0;
   let marked = null;
   let hljs = null;
   let markdownReady = false;
@@ -122,7 +121,7 @@
         status = row.encrypted_content ? 'Contenu illisible — ancienne note' : 'Enregistré';
       }
       if (viewMode === 'preview' || (viewMode === 'split' && canSplit)) {
-        updatePreview();
+        previewHtml = await renderMarkdown(body);
       }
     } catch (e) {
       console.error('Note load failed', e);
@@ -274,10 +273,7 @@
   }
 
   const updatePreview = debounce(async () => {
-    const requestId = ++previewRequestId;
-    const html = await renderMarkdown(body);
-    if (requestId !== previewRequestId) return;
-    previewHtml = html;
+    previewHtml = await renderMarkdown(body);
   }, 200);
 
   function insertAtCursor(text, cursorOffset = 0) {
@@ -364,7 +360,6 @@
   }
 
   $: if (viewMode === 'preview' || (viewMode === 'split' && canSplit)) updatePreview();
-  $: if (body && (viewMode === 'preview' || (viewMode === 'split' && canSplit))) updatePreview();
 
   // Log whenever previewHtml changes so we can trace unexpected resets
 
