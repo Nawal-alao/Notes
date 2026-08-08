@@ -308,6 +308,7 @@
   }
 
   const updatePreview = debounce(async () => {
+    try { window.__editorLogs = window.__editorLogs || []; window.__editorLogs.push({ evt: 'updatePreview-enter', bodyLen: typeof body === 'string' ? body.length : null }); } catch (e) {}
     previewHtml = await renderMarkdown(body);
     try {
       window.__editorLogs = window.__editorLogs || [];
