@@ -23,11 +23,18 @@ export async function loadMarkdownLibs() {
     hljs = window.hljs;
     if (!hljs) throw new Error('highlight.js failed to initialize');
 
+    const renderer = new marked.Renderer();
+    renderer.link = function (href, title, text) {
+      const titleAttribute = title ? ` title="${escapeHtml(title)}"` : '';
+      return `<a href="${href}"${titleAttribute} target="_blank" rel="noopener noreferrer">${text}</a>`;
+    };
+
     marked.setOptions({
       gfm: true,
       breaks: false,
       headerIds: false,
       mangle: false,
+      renderer,
       highlight: (code, lang) => {
         try {
           if (lang && hljs.getLanguage?.(lang)) {

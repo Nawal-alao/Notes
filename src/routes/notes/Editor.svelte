@@ -658,5 +658,60 @@
     border-color: transparent;
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1), 0 4px 20px rgba(0, 0, 0, 0.5);
   }
+
+  .preview-content :global(h1),
+  .preview-content :global(h2),
+  .preview-content :global(h3) {
+    font-weight: 700;
+    line-height: 1.25;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+  }
+
+  .preview-content :global(h1) {
+    font-size: 1.9em;
+  }
+
+  .preview-content :global(h2) {
+    font-size: 1.45em;
+  }
+
+  .preview-content :global(h3) {
+    font-size: 1.18em;
+  }
+
+  .preview-content :global(ul),
+  .preview-content :global(ol) {
+    padding-left: 1.75rem;
+    margin-top: 0.75em;
+    margin-bottom: 0.75em;
+  }
+
+  .preview-content :global(ul) {
+    list-style: disc;
+  }
+
+  .preview-content :global(ol) {
+    list-style: decimal;
+  }
+
+  .preview-content :global(li) {
+    padding-left: 0.25rem;
+    margin-top: 0.3em;
+    margin-bottom: 0.3em;
+  }
+
+  .preview-content :global(a) {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-color: rgba(240, 72, 62, 0.65);
+    text-underline-offset: 2px;
+    transition: color 150ms ease, text-decoration-color 150ms ease;
+  }
+
+  .preview-content :global(a:hover) {
+    color: #ff8a7f;
+    text-decoration-color: currentColor;
+  }
 </style>
 
