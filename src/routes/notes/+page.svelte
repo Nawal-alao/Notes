@@ -15,7 +15,8 @@
   import { supabase } from '$lib/supabase';
   import {
     Search, Lock, ShieldCheck, FileText, Sparkles, X, 
-    LogOut, FolderOpen, AlertCircle, KeyRound, ChevronsLeft, ChevronsRight
+    LogOut, FolderOpen, AlertCircle, KeyRound, ChevronsLeft, ChevronsRight,
+    ArrowUpDown, Clock, ArrowDownAZ, Tag
   } from 'lucide-svelte';
 
   const [send, receive] = crossfade({
@@ -35,6 +36,9 @@
   let searchInputEl;
   let notesPanelOpen = true;
   let createdTags = new Set();
+  let sortMode = 'recent';
+  let sortMenuOpen = false;
+  let sortMenuEl;
 
   async function load() {
     const session = await fetchNotes();
@@ -247,16 +251,45 @@
       }
     };
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('click', handleSortMenuOutsideClick);
 
     const cleanup = () => {
       if (unsubscribe) unsubscribe();
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('click', handleSortMenuOutsideClick);
     };
     return cleanup;
   });
 
   function selectFolder(id) { selectedFolder = id; }
   function toggleNotesPanel() { notesPanelOpen = !notesPanelOpen; }
+  function handleSortMenuOutsideClick(event) {
+    if (sortMenuOpen && sortMenuEl && !sortMenuEl.contains(event.target)) {
+      sortMenuOpen = false;
+    }
+  }
+
+  function getSortedNotes(notesList, mode) {
+    const list = [...notesList];
+    if (mode === 'alphabetical') {
+      return list.sort((a, b) => (a.titlePreview || '').localeCompare(b.titlePreview || ''));
+    }
+    if (mode === 'byTag') {
+      const grouped = {};
+      const noTag = [];
+      for (const note of list) {
+        const tag = note.tags?.[0];
+        if (tag) {
+          (grouped[tag] ||= []).push(note);
+        } else {
+          noTag.push(note);
+        }
+      }
+      const tagNames = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
+      return [...tagNames.flatMap(tag => grouped[tag]), ...noTag];
+    }
+    return list.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+  }
 
   async function handleLockVault() {
     encryptionStore.set(null);
@@ -351,7 +384,7 @@
   function escapeHtml(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
   $: filteredNotesList = (() => {
-    let list = notes.slice().sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    let list = notes.slice();
     if (selectedFolder === 'uncat') list = list.filter(n => !n.tags || n.tags.length === 0);
     else if (selectedFolder !== 'all') list = list.filter(n => (n.tags || []).includes(selectedFolder));
     if (search && search.trim()) {
@@ -360,6 +393,7 @@
     }
     return list;
   })();
+  $: sortedNotes = getSortedNotes(filteredNotesList, sortMode);
 </script>
 
 <svelte:head>
@@ -435,22 +469,60 @@
               <FileText class="w-3.5 h-3.5 text-slate-400" />
               <span>Notes ({filteredNotesList.length})</span>
             </span>
-            <button
-              on:click={toggleNotesPanel}
-              class="p-1.5 rounded-md text-slate-400 hover:text-white transition"
-              title={notesPanelOpen ? 'Masquer le panneau notes (Ctrl+,)' : 'Afficher le panneau notes (Ctrl+,)'}
-            >
-              {#if notesPanelOpen}
-                <ChevronsLeft class="w-4 h-4" />
-              {:else}
-                <ChevronsRight class="w-4 h-4" />
+            <div class="relative flex items-center gap-1" bind:this={sortMenuEl}>
+              <button
+                on:click={() => sortMenuOpen = !sortMenuOpen}
+                class="p-1.5 rounded-md text-slate-400 hover:text-white transition"
+                title="Trier les notes"
+                aria-label="Trier les notes"
+                aria-expanded={sortMenuOpen}
+              >
+                <ArrowUpDown class="w-3.5 h-3.5 text-slate-400" />
+              </button>
+
+              {#if sortMenuOpen}
+                <div class="absolute right-0 top-full z-30 mt-2 w-44 rounded-md border border-white/10 bg-black/90 p-1.5 shadow-2xl">
+                  <button
+                    on:click={() => { sortMode = 'recent'; sortMenuOpen = false; }}
+                    class="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition {sortMode === 'recent' ? 'bg-white/[0.06] text-accent' : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'}"
+                  >
+                    <Clock class="w-3.5 h-3.5" />
+                    <span>Récent</span>
+                  </button>
+                  <button
+                    on:click={() => { sortMode = 'alphabetical'; sortMenuOpen = false; }}
+                    class="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition {sortMode === 'alphabetical' ? 'bg-white/[0.06] text-accent' : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'}"
+                  >
+                    <ArrowDownAZ class="w-3.5 h-3.5" />
+                    <span>Alphabétique</span>
+                  </button>
+                  <button
+                    on:click={() => { sortMode = 'byTag'; sortMenuOpen = false; }}
+                    class="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition {sortMode === 'byTag' ? 'bg-white/[0.06] text-accent' : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'}"
+                  >
+                    <Tag class="w-3.5 h-3.5" />
+                    <span>Par tag</span>
+                  </button>
+                </div>
               {/if}
-            </button>
+
+              <button
+                on:click={toggleNotesPanel}
+                class="p-1.5 rounded-md text-slate-400 hover:text-white transition"
+                title={notesPanelOpen ? 'Masquer le panneau notes (Ctrl+,)' : 'Afficher le panneau notes (Ctrl+,)'}
+              >
+                {#if notesPanelOpen}
+                  <ChevronsLeft class="w-4 h-4" />
+                {:else}
+                  <ChevronsRight class="w-4 h-4" />
+                {/if}
+              </button>
+            </div>
           </div>
 
         <div class="flex-1 overflow-y-auto pr-1 space-y-2.5 h-[calc(100%-44px)]">
             {#if filteredNotesList.length > 0}
-              {#each filteredNotesList as note, i (note.id)}
+              {#each sortedNotes as note, i (note.id)}
                 <div animate:flip={{ duration: 200 }}>
                   <NoteCard
                     {note}
