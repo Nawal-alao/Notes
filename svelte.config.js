@@ -8,7 +8,7 @@ const config = {
       fallback: 'index.html'
     }),
     paths: {
-      base: '/Notes'
+      base: '/Orbit'
     }
   }
 };
